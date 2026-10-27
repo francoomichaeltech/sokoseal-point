@@ -13,3 +13,7 @@ export type Selection =
   | { status: "NONE" };
 
 export type GroundingResult = (Selection | { status: "ERROR" }) & { latencyMs?: number };
+
+export type ScanResult =
+  | { status: "OK"; boxes: Box[]; latencyMs: number }
+  | { status: "ERROR"; latencyMs: number };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { selectAlongRay } from "../lib/grounding/select";
-import { readPointer } from "../lib/pointing/gesture";
+import { readAim } from "../lib/pointing/gesture";
 
 const mug = { x1: 0.1, y1: 0.1, x2: 0.3, y2: 0.4 };
 const pen = { x1: 0.6, y1: 0.1, x2: 0.9, y2: 0.2 };
@@ -44,27 +44,28 @@ function pointingHand() {
   landmarks[5] = { x: 0.5, y: 0.7 };
   landmarks[6] = { x: 0.5, y: 0.6 };
   landmarks[8] = { x: 0.5, y: 0.5 };
-  landmarks[10] = { x: 0.55, y: 0.68 };
-  landmarks[12] = { x: 0.55, y: 0.78 };
-  landmarks[14] = { x: 0.6, y: 0.7 };
-  landmarks[16] = { x: 0.58, y: 0.8 };
-  landmarks[18] = { x: 0.63, y: 0.72 };
-  landmarks[20] = { x: 0.6, y: 0.82 };
   return landmarks;
 }
 
-describe("readPointer", () => {
-  it("reads the tip and direction of a pointing hand", () => {
-    const pointer = readPointer(pointingHand());
-    expect(pointer?.tip).toEqual({ x: 0.5, y: 0.5 });
-    expect(pointer?.direction.x).toBeCloseTo(0);
-    expect(pointer?.direction.y).toBeCloseTo(-1);
+describe("readAim", () => {
+  it("reads the tip, base and bounds of the hand", () => {
+    const aim = readAim(pointingHand());
+    expect(aim?.tip).toEqual({ x: 0.5, y: 0.5 });
+    expect(aim?.base).toEqual({ x: 0.5, y: 0.7 });
+    expect(aim?.hand.y1).toBe(0.5);
+    expect(aim?.hand.y2).toBe(0.9);
   });
 
-  it("ignores an open hand", () => {
+  it("follows an open hand too", () => {
     const landmarks = pointingHand();
     landmarks[12] = { x: 0.55, y: 0.35 };
     landmarks[16] = { x: 0.6, y: 0.38 };
-    expect(readPointer(landmarks)).toBeNull();
+    expect(readAim(landmarks)).not.toBeNull();
+  });
+
+  it("ignores a finger too short to aim with", () => {
+    const landmarks = pointingHand();
+    landmarks[8] = { x: 0.5, y: 0.695 };
+    expect(readAim(landmarks)).toBeNull();
   });
 });

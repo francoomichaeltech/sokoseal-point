@@ -1,64 +1,41 @@
-import type { Box, Point, Pointer } from "@/lib/grounding/types";
+import type { Box, Point } from "@/lib/grounding/types";
 
 // MediaPipe hand landmark indices.
-const WRIST = 0;
 const INDEX_MCP = 5;
-const INDEX_PIP = 6;
 const INDEX_TIP = 8;
-// [middle joint, tip] of the middle, ring and little fingers.
-const OTHER_FINGERS = [
-  [10, 12],
-  [14, 16],
-  [18, 20],
-] as const;
 
-// The index tip must be this much further from the wrist than its middle joint to count as straight.
-const EXTENDED_RATIO = 1.1;
-// Shorter fingers are too distant or foreshortened to give a stable direction.
-const MIN_FINGER_LENGTH = 0.03;
+// Index fingers shorter than this on screen are too distant or foreshortened to aim with.
+const MIN_AIM_LENGTH = 0.015;
 
-export type HandPointer = Required<Pointer>;
+/** Raw aim of a visible hand, before smoothing. */
+export type Aim = { tip: Point; base: Point; hand: Box };
 
 function clamp(value: number) {
   return Math.min(1, Math.max(0, value));
 }
 
-function distance(a: Point, b: Point) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-// Returns the pointing ray of a hand, or null if the hand is not making a pointing gesture.
-export function readPointer(landmarks: readonly Point[]): HandPointer | null {
-  if (landmarks.length < 21) return null;
-
-  const wrist = landmarks[WRIST];
-  const tip = landmarks[INDEX_TIP];
-  const pip = landmarks[INDEX_PIP];
-  const mcp = landmarks[INDEX_MCP];
-
-  const indexStraight = distance(tip, wrist) > distance(pip, wrist) * EXTENDED_RATIO;
-  const folded = OTHER_FINGERS.filter(
-    ([joint, end]) => distance(landmarks[end], wrist) < distance(landmarks[joint], wrist),
-  ).length;
-  if (!indexStraight || folded < 2) return null;
-
-  const dx = tip.x - mcp.x;
-  const dy = tip.y - mcp.y;
-  const length = Math.hypot(dx, dy);
-  if (length < MIN_FINGER_LENGTH) return null;
-
+function bounds(landmarks: readonly Point[]): Box {
   const xs = landmarks.map((point) => point.x);
   const ys = landmarks.map((point) => point.y);
-  const hand: Box = {
+  return {
     x1: clamp(Math.min(...xs)),
     y1: clamp(Math.min(...ys)),
     x2: clamp(Math.max(...xs)),
     y2: clamp(Math.max(...ys)),
   };
+}
+
+// Any visible hand aims along its index finger; the pose does not have to be a strict point.
+export function readAim(landmarks: readonly Point[]): Aim | null {
+  if (landmarks.length < 21) return null;
+
+  const tip = landmarks[INDEX_TIP];
+  const base = landmarks[INDEX_MCP];
+  if (Math.hypot(tip.x - base.x, tip.y - base.y) < MIN_AIM_LENGTH) return null;
 
   return {
     tip: { x: clamp(tip.x), y: clamp(tip.y) },
-    direction: { x: dx / length, y: dy / length },
-    hand,
+    base: { x: base.x, y: base.y },
+    hand: bounds(landmarks),
   };
 }

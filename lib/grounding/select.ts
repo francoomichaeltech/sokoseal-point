@@ -12,6 +12,8 @@ const HAND_COVERAGE = 0.75;
 
 const RAY_STEP = 0.01;
 
+export type RayHit = { selection: Selection; at: Point | null };
+
 function area(box: Box) {
   return (box.x2 - box.x1) * (box.y2 - box.y1);
 }
@@ -46,22 +48,26 @@ export function selectTarget(boxes: Box[], point: Point): Selection {
   return { status: "AMBIGUOUS", boxes: hits };
 }
 
-// Walks from the fingertip towards the frame edge and returns the first object the ray meets.
-export function selectAlongRay(boxes: Box[], tip: Point, direction: Point, hand?: Box): Selection {
-  const length = Math.hypot(direction.x, direction.y);
-  if (!length) return { status: "NONE" };
-
+export function withoutHand(boxes: Box[], hand?: Box): Box[] {
   const handArea = hand ? area(hand) : 0;
-  const candidates =
-    hand && handArea > 0
-      ? boxes.filter((box) => intersection(box, hand) / handArea < HAND_COVERAGE)
-      : boxes;
+  if (!hand || handArea <= 0) return boxes;
+  return boxes.filter((box) => intersection(box, hand) / handArea < HAND_COVERAGE);
+}
+
+// Walks from the fingertip towards the frame edge and stops at the first object it meets.
+export function castRay(boxes: Box[], tip: Point, direction: Point): RayHit {
+  const length = Math.hypot(direction.x, direction.y);
+  if (!length) return { selection: { status: "NONE" }, at: null };
 
   const step = { x: (direction.x / length) * RAY_STEP, y: (direction.y / length) * RAY_STEP };
 
   for (let point = tip; isInside(point); point = { x: point.x + step.x, y: point.y + step.y }) {
-    const selection = selectTarget(candidates, point);
-    if (selection.status !== "NONE") return selection;
+    const selection = selectTarget(boxes, point);
+    if (selection.status !== "NONE") return { selection, at: point };
   }
-  return { status: "NONE" };
+  return { selection: { status: "NONE" }, at: null };
+}
+
+export function selectAlongRay(boxes: Box[], tip: Point, direction: Point, hand?: Box): Selection {
+  return castRay(withoutHand(boxes, hand), tip, direction).selection;
 }

@@ -1,13 +1,13 @@
 "use client";
 
+import { useRef } from "react";
 import { Camera, Check, LoaderCircle, TriangleAlert } from "lucide-react";
-import { useGrounding, type GroundingState } from "@/lib/grounding/use-grounding";
 import { useMessages } from "@/lib/i18n/locale";
 import type { Messages } from "@/lib/i18n/messages";
-import { captureFrame } from "@/lib/media/capture";
 import { useCamera } from "@/lib/media/use-camera";
-import { usePointing, type TrackerStatus, type Tracking } from "@/lib/pointing/use-pointing";
-import { boxToView, pointToView } from "@/lib/pointing/viewport";
+import { RING_LENGTH, RING_RADIUS, SPOT_GRADIENT, SPOT_SIZE } from "@/lib/pointing/draw";
+import { usePointer } from "@/lib/pointing/use-pointer";
+import { boxToView } from "@/lib/pointing/viewport";
 import { useElementSize } from "@/lib/use-element-size";
 
 type Tone = "neutral" | "busy" | "verified" | "attention";
@@ -19,129 +19,92 @@ const TONE_CLASS: Record<Tone, string> = {
   attention: "bg-attention",
 };
 
-const RING_RADIUS = 16;
-const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
-const RAY_LENGTH_PX = 48;
+function statusChip(pointer: ReturnType<typeof usePointer>, t: Messages["point"]): { text: string; tone: Tone } {
+  if (pointer.status === "error") return { text: t.pointing.unsupported, tone: "attention" };
+  if (pointer.status === "loading") return { text: t.pointing.loading, tone: "busy" };
+  if (pointer.checking) return { text: t.ground.checking, tone: "busy" };
 
-function statusChip(
-  tracker: TrackerStatus,
-  tracking: Tracking,
-  grounding: GroundingState,
-  t: Messages["point"],
-): { text: string; tone: Tone } {
-  if (tracker === "error") return { text: t.pointing.unsupported, tone: "attention" };
-  if (tracker === "loading") return { text: t.pointing.loading, tone: "busy" };
-  if (grounding.phase === "checking") return { text: t.ground.checking, tone: "busy" };
-
-  if (grounding.phase === "done") {
-    switch (grounding.result.status) {
-      case "MATCH":
-        return { text: t.ground.match, tone: "verified" };
-      case "AMBIGUOUS":
-        return { text: t.ground.ambiguous, tone: "attention" };
-      case "NONE":
-        return { text: t.ground.none, tone: "attention" };
-      default:
-        return { text: t.ground.error, tone: "attention" };
-    }
+  switch (pointer.committed?.status) {
+    case "MATCH":
+      return { text: t.ground.match, tone: "verified" };
+    case "AMBIGUOUS":
+      return { text: t.ground.ambiguous, tone: "attention" };
+    case "NONE":
+      return { text: t.ground.none, tone: "attention" };
+    case "ERROR":
+      return { text: t.ground.error, tone: "attention" };
   }
 
-  if (tracking.pointer && tracking.progress > 0.2) return { text: t.pointing.steady, tone: "neutral" };
-  return { text: t.pointing.searching, tone: "neutral" };
+  return pointer.handVisible
+    ? { text: t.pointing.aim, tone: "neutral" }
+    : { text: t.pointing.searching, tone: "neutral" };
 }
 
 export function CameraView() {
   const { videoRef, status, start } = useCamera();
-  const { state: grounding, ground, clear } = useGrounding();
   const [viewRef, view] = useElementSize<HTMLDivElement>();
+  const beamRef = useRef<HTMLDivElement>(null);
+  const spotRef = useRef<HTMLDivElement>(null);
+  const ringRef = useRef<SVGCircleElement>(null);
+  const hoverRef = useRef<HTMLDivElement>(null);
   const t = useMessages().point;
 
-  const holdWhenLost =
-    grounding.phase === "checking" ||
-    (grounding.phase === "done" && grounding.result.status === "MATCH");
-
-  const { status: tracker, tracking } = usePointing(videoRef, {
-    enabled: status === "live",
-    holdWhenLost,
-    onDwell: (pointer) => {
-      const video = videoRef.current;
-      const frame = video ? captureFrame(video) : null;
-      if (frame) void ground(frame, pointer);
-    },
-    onRelease: clear,
-  });
-
   const live = status === "live";
-  const { frame, pointer, progress } = tracking;
-  const result = grounding.phase === "done" ? grounding.result : null;
-  const chip = statusChip(tracker, tracking, grounding, t);
-
-  const tip = live && frame && pointer ? pointToView(pointer.tip, view, frame) : null;
-  // Direction is in normalized frame units; converted to pixels for the on-screen angle.
-  const rayAngle =
-    frame && pointer
-      ? Math.atan2(pointer.direction.y * frame.height, pointer.direction.x * frame.width)
-      : 0;
+  const pointer = usePointer(videoRef, {
+    enabled: live,
+    overlay: { container: viewRef, beam: beamRef, spot: spotRef, ring: ringRef, hover: hoverRef },
+  });
+  const { committed } = pointer;
+  const chip = statusChip(pointer, t);
+  const half = SPOT_SIZE / 2;
 
   return (
     <div ref={viewRef} className="viewfinder h-full rounded-card">
       <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
 
-      {live && frame && result?.status === "MATCH" && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute rounded-lg border-[3px] border-primary shadow-[0_0_0_1px_rgb(255_255_255/0.8)]"
-          style={boxToView(result.box, view, frame)}
-        />
-      )}
-
-      {live &&
-        frame &&
-        result?.status === "AMBIGUOUS" &&
-        result.boxes.map((box, index) => (
-          <div
-            key={index}
-            aria-hidden
-            className="pointer-events-none absolute rounded-lg border-2 border-dashed border-attention"
-            style={boxToView(box, view, frame)}
-          />
-        ))}
-
-      {tip && (
-        <>
-          <span
-            aria-hidden
-            className="pointer-events-none absolute h-[3px] rounded-full bg-primary"
-            style={{
-              left: tip.left,
-              top: tip.top,
-              width: RAY_LENGTH_PX,
-              transform: `translateY(-50%) rotate(${rayAngle}rad)`,
-              transformOrigin: "0 50%",
-            }}
-          />
-          <svg
-            aria-hidden
-            viewBox="0 0 40 40"
-            className="pointer-events-none absolute size-10 -translate-x-1/2 -translate-y-1/2"
-            style={tip}
-          >
-            <circle cx="20" cy="20" r={RING_RADIUS} fill="none" strokeWidth="3" className="stroke-white/60" />
-            <circle
-              cx="20"
-              cy="20"
-              r={RING_RADIUS}
-              fill="none"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeDasharray={RING_LENGTH}
-              strokeDashoffset={RING_LENGTH * (1 - progress)}
-              transform="rotate(-90 20 20)"
-              className="stroke-primary"
+      {live && (
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          {committed?.status === "MATCH" && (
+            <div
+              className="absolute rounded-lg border-[3px] border-primary shadow-[0_0_0_1px_rgb(255_255_255/0.8)]"
+              style={boxToView(committed.box, view, committed.frame)}
             />
-            <circle cx="20" cy="20" r="4" className="fill-primary" />
-          </svg>
-        </>
+          )}
+
+          {committed?.status === "AMBIGUOUS" &&
+            committed.boxes.map((box, index) => (
+              <div
+                key={index}
+                className="absolute rounded-lg border-2 border-dashed border-attention"
+                style={boxToView(box, view, committed.frame)}
+              />
+            ))}
+
+          {/* Positioned every frame by drawPointer. */}
+          <div ref={hoverRef} className="absolute top-0 left-0 rounded-lg border-2 border-white/90 opacity-0" />
+          <div
+            ref={beamRef}
+            className="absolute top-0 left-0 -mt-1 h-2 origin-[0_50%] rounded-full bg-linear-to-r from-white/0 to-primary/60 opacity-0"
+          />
+          <div ref={spotRef} className="absolute top-0 left-0 opacity-0" style={{ width: SPOT_SIZE, height: SPOT_SIZE }}>
+            <div className="absolute inset-0 rounded-full" style={{ background: SPOT_GRADIENT }} />
+            <svg viewBox={`0 0 ${SPOT_SIZE} ${SPOT_SIZE}`} className="absolute inset-0">
+              <circle
+                ref={ringRef}
+                cx={half}
+                cy={half}
+                r={RING_RADIUS}
+                fill="none"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeDasharray={RING_LENGTH}
+                strokeDashoffset={RING_LENGTH}
+                transform={`rotate(-90 ${half} ${half})`}
+                className="stroke-white"
+              />
+            </svg>
+          </div>
+        </div>
       )}
 
       {live ? (

@@ -3,6 +3,10 @@ import type { HandLandmarker } from "@mediapipe/tasks-vision";
 const MODEL_URL =
   "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
 
+// Below the 0.5 defaults so a smaller, more distant hand keeps being tracked instead of
+// falling back to palm detection on every frame.
+const CONFIDENCE = 0.35;
+
 let pending: Promise<HandLandmarker> | null = null;
 
 async function create(): Promise<HandLandmarker> {
@@ -16,6 +20,9 @@ async function create(): Promise<HandLandmarker> {
     baseOptions: { modelAssetPath: MODEL_URL, delegate },
     runningMode: "VIDEO" as const,
     numHands: 1,
+    minHandDetectionConfidence: CONFIDENCE,
+    minHandPresenceConfidence: CONFIDENCE,
+    minTrackingConfidence: CONFIDENCE,
   });
 
   try {
