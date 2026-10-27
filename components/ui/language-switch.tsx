@@ -9,14 +9,19 @@ const options: { code: Locale; label: string }[] = [
   { code: "sw", label: "Kiswahili" },
 ];
 
-export function LanguageSwitch() {
+type LanguageSwitchProps = {
+  block?: boolean;
+  className?: string;
+};
+
+export function LanguageSwitch({ block = false, className = "" }: LanguageSwitchProps) {
   const locale = useLocale();
 
   return (
     <div
       role="radiogroup"
       aria-label="Language"
-      className="inline-flex rounded-control border border-line bg-surface p-0.5"
+      className={`${block ? "flex w-full" : "inline-flex"} rounded-control border border-line bg-surface p-0.5 ${className}`}
     >
       {options.map(({ code, label }) => (
         <button
@@ -25,7 +30,7 @@ export function LanguageSwitch() {
           role="radio"
           aria-checked={locale === code}
           onClick={() => setLocale(code)}
-          className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+          className={`${block ? "h-11 flex-1" : "py-1.5"} rounded-lg px-3 text-sm font-medium ${
             locale === code ? "bg-primary text-white" : "text-ink"
           }`}
         >

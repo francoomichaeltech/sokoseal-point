@@ -8,6 +8,17 @@ const en = {
     steps: ["Open your phone camera", "Scan the QR code", "Start on your phone"],
     footer: "Already on your phone? Open this link there.",
   },
+  setup: {
+    title: "Set up your shop",
+    shopName: "Shop name",
+    shopNamePlaceholder: "e.g. Mama Neema Hardware",
+    nameRequired: "Enter a shop name.",
+    language: "Language",
+    currency: "Shop currency",
+    currencyHelp: "Applies to all products. No conversion.",
+    currencies: { USD: "US Dollar", TZS: "Tanzanian Shilling" },
+    submit: "Continue",
+  },
   point: {
     hint: "Point at a product, then hold to speak.",
     camera: {
@@ -38,6 +49,17 @@ const sw: Messages = {
     body: "Elekeza kwenye bidhaa na uzungumze kwa kawaida. Inatumia kamera na maikrofoni ya simu yako.",
     steps: ["Fungua kamera ya simu yako", "Skani msimbo wa QR", "Anza kwenye simu yako"],
     footer: "Tayari uko kwenye simu? Fungua kiungo hiki huko.",
+  },
+  setup: {
+    title: "Sanidi duka lako",
+    shopName: "Jina la duka",
+    shopNamePlaceholder: "mf. Mama Neema Hardware",
+    nameRequired: "Weka jina la duka.",
+    language: "Lugha",
+    currency: "Sarafu ya duka",
+    currencyHelp: "Inatumika kwa bidhaa zote. Hakuna ubadilishaji wa sarafu.",
+    currencies: { USD: "Dola ya Marekani", TZS: "Shilingi ya Tanzania" },
+    submit: "Endelea",
   },
   point: {
     hint: "Elekeza kwenye bidhaa, kisha shikilia ili uongee.",

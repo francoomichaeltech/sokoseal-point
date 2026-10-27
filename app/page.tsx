@@ -1,6 +1,16 @@
-import { redirect } from "next/navigation";
+"use client";
 
-// Shop setup check is added with the catalogue; until then, go straight to products.
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useShop } from "@/lib/shop/store";
+
 export default function Home() {
-  redirect("/products");
+  const shop = useShop();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (shop !== undefined) router.replace(shop ? "/products" : "/setup");
+  }, [shop, router]);
+
+  return null;
 }
