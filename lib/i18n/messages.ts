@@ -82,6 +82,17 @@ const en = {
       body: "Add at least one active product before pointing.",
       action: "Add product",
     },
+    pointing: {
+      searching: "Point your finger at a product.",
+      steady: "Hold still…",
+    },
+    ground: {
+      checking: "Finding what you're pointing at…",
+      match: "Found what you're pointing at.",
+      ambiguous: "Two products are too close. Point more clearly at one.",
+      none: "No product where you're pointing.",
+      error: "Couldn't check that. Point again.",
+    },
     camera: {
       idle: "Turn on the camera to point at products.",
       starting: "Starting camera…",
@@ -182,6 +193,17 @@ const sw: Messages = {
       title: "Hakuna bidhaa zinazotumika",
       body: "Ongeza angalau bidhaa moja inayotumika kabla ya kuelekeza.",
       action: "Ongeza bidhaa",
+    },
+    pointing: {
+      searching: "Nyoosha kidole kwenye bidhaa.",
+      steady: "Tulia kidogo…",
+    },
+    ground: {
+      checking: "Inatafuta unachoelekeza…",
+      match: "Kitu ulichoelekeza kimepatikana.",
+      ambiguous: "Bidhaa mbili ziko karibu sana. Elekeza moja kwa uwazi zaidi.",
+      none: "Hakuna bidhaa unapoelekeza.",
+      error: "Imeshindwa kukagua. Elekeza tena.",
     },
     camera: {
       idle: "Washa kamera ili kuelekeza kwenye bidhaa.",
