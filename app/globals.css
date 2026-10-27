@@ -101,3 +101,11 @@
   /* Disables double-tap zoom so taps register immediately as Direct Point. */
   touch-action: manipulation;
 }
+
+/* Fills the space between the header and the bottom nav without page scroll. */
+@utility app-stage {
+  position: fixed;
+  inset-inline: 0;
+  top: calc(var(--header-height) + env(safe-area-inset-top));
+  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
+}

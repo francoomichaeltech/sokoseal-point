@@ -2,14 +2,14 @@
 
 import { Mic } from "lucide-react";
 import { useMessages } from "@/lib/i18n/locale";
-import { useMicLevel } from "@/lib/media/use-mic-level";
+import { useMic } from "@/lib/media/use-mic";
 
 export function HoldToSpeak() {
-  const { status, level, start, stop } = useMicLevel();
+  const { status, level, start, stop } = useMic();
   const t = useMessages().point.mic;
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex shrink-0 flex-col items-center gap-2">
       <button
         type="button"
         aria-label={t.hold}

@@ -9,6 +9,7 @@ const en = {
     footer: "Already on your phone? Open this link there.",
   },
   point: {
+    hint: "Point at a product, then hold to speak.",
     camera: {
       idle: "Turn on the camera to point at products.",
       starting: "Starting camera…",
@@ -39,6 +40,7 @@ const sw: Messages = {
     footer: "Tayari uko kwenye simu? Fungua kiungo hiki huko.",
   },
   point: {
+    hint: "Elekeza kwenye bidhaa, kisha shikilia ili uongee.",
     camera: {
       idle: "Washa kamera ili kuelekeza kwenye bidhaa.",
       starting: "Inawasha kamera…",
