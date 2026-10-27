@@ -83,6 +83,8 @@ const en = {
       action: "Add product",
     },
     pointing: {
+      loading: "Getting finger tracking ready…",
+      unsupported: "Finger tracking isn't available on this device.",
       searching: "Point your finger at a product.",
       steady: "Hold still…",
     },
@@ -195,6 +197,8 @@ const sw: Messages = {
       action: "Ongeza bidhaa",
     },
     pointing: {
+      loading: "Inaandaa ufuatiliaji wa kidole…",
+      unsupported: "Ufuatiliaji wa kidole haupatikani kwenye kifaa hiki.",
       searching: "Nyoosha kidole kwenye bidhaa.",
       steady: "Tulia kidogo…",
     },

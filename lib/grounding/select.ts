@@ -1,13 +1,25 @@
 import type { Box, Point, Selection } from "./types";
 
-// Lets a tap on the edge of a thin object (a pen) still count.
+// Lets a point on the edge of a thin object (a pen) still count.
 const EDGE_TOLERANCE = 0.01;
 
-// A tap inside a small box that sits within a much larger one targets the small one.
+// A point inside a small box that sits within a much larger one targets the small one.
 const NESTED_AREA_RATIO = 0.5;
+
+// SAM also detects the pointing hand (or hand and arm). A box that covers most of the
+// tracked hand is treated as the hand and ignored.
+const HAND_COVERAGE = 0.75;
+
+const RAY_STEP = 0.01;
 
 function area(box: Box) {
   return (box.x2 - box.x1) * (box.y2 - box.y1);
+}
+
+function intersection(a: Box, b: Box) {
+  const width = Math.max(0, Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1));
+  const height = Math.max(0, Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1));
+  return width * height;
 }
 
 function contains(box: Box, point: Point) {
@@ -19,6 +31,10 @@ function contains(box: Box, point: Point) {
   );
 }
 
+function isInside(point: Point) {
+  return point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1;
+}
+
 export function selectTarget(boxes: Box[], point: Point): Selection {
   const hits = boxes.filter((box) => contains(box, point)).sort((a, b) => area(a) - area(b));
 
@@ -28,4 +44,24 @@ export function selectTarget(boxes: Box[], point: Point): Selection {
   }
   // Two similarly sized candidates: ask the user instead of guessing.
   return { status: "AMBIGUOUS", boxes: hits };
+}
+
+// Walks from the fingertip towards the frame edge and returns the first object the ray meets.
+export function selectAlongRay(boxes: Box[], tip: Point, direction: Point, hand?: Box): Selection {
+  const length = Math.hypot(direction.x, direction.y);
+  if (!length) return { status: "NONE" };
+
+  const handArea = hand ? area(hand) : 0;
+  const candidates =
+    hand && handArea > 0
+      ? boxes.filter((box) => intersection(box, hand) / handArea < HAND_COVERAGE)
+      : boxes;
+
+  const step = { x: (direction.x / length) * RAY_STEP, y: (direction.y / length) * RAY_STEP };
+
+  for (let point = tip; isInside(point); point = { x: point.x + step.x, y: point.y + step.y }) {
+    const selection = selectTarget(candidates, point);
+    if (selection.status !== "NONE") return selection;
+  }
+  return { status: "NONE" };
 }

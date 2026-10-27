@@ -7,9 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "postinstall": "node scripts/copy-mediapipe.mjs"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "^1.1.1",
     "idb-keyval": "^6.3.0",
     "lucide-react": "^1.62.0",
     "next": "16.4.3",
