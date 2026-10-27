@@ -35,7 +35,12 @@ yarn-error.log*
 
 # vercel
 .vercel
+!.env.example
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# raw eval recordings stay local; commit transcripts and results only
+/eval/**/audio/
+/eval/**/captures/

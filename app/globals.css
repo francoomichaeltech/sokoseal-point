@@ -1,26 +1,103 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-canvas: #F7F7F4;
+  --color-surface: #FFFFFF;
+  --color-ink: #171717;
+  --color-muted: #666A70;
+  --color-line: #E5E5E0;
+
+  --color-primary: #1769E0;
+  --color-primary-soft: #EAF1FC;
+  --color-verified: #16875B;
+  --color-verified-soft: #E8F4EE;
+  --color-attention: #B7791F;
+  --color-attention-soft: #FBF3E6;
+  --color-danger: #C63B32;
+
+  --color-disabled: #EDEDEA;
+  --color-disabled-ink: #A3A6AA;
+
+  --radius-control: 10px;
+  --radius-card: 12px;
+  --radius-sheet: 20px;
+
+  --shadow-card: 0 1px 2px rgb(23 23 23 / 0.04);
+  --shadow-sheet: 0 -4px 16px rgb(23 23 23 / 0.08);
 }
 
+/* --font-inter is set by next/font in app/layout.tsx. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter, ui-sans-serif), system-ui, -apple-system,
+    "Segoe UI", Roboto, Arial, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --header-height: 56px;
+  --nav-height: 64px;
+  color-scheme: light;
+}
+
+@layer base {
+  body {
+    min-height: 100dvh;
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    /* Prevents pull-to-refresh from reloading the page during a camera session. */
+    overscroll-behavior-y: none;
+  }
+
+  /* Tailwind v4 resets the button cursor to default. */
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  [data-money],
+  [data-qty] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Keeps page content clear of the fixed bottom nav. */
+@utility pb-nav {
+  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + 16px);
+}
+
+@utility tap-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+@utility viewfinder {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background-color: #000;
+  /* Disables double-tap zoom so taps register immediately as Direct Point. */
+  touch-action: manipulation;
 }
