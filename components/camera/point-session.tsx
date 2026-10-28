@@ -1,34 +1,90 @@
-// components/camera/point-session.tsx
-
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { requestScan } from "@/lib/grounding/scan-client";
 import type { ScanResult } from "@/lib/grounding/types";
 import { captureFrame } from "@/lib/media/capture";
 import { useCamera } from "@/lib/media/use-camera";
 import { resolveDwell } from "@/lib/pointing/resolve";
+import { createThumbnailer, sceneDifference, type Thumbnail } from "@/lib/pointing/scene";
 import { usePointingSession } from "@/lib/pointing/use-pointing-session";
 import { CameraView, type Pointed } from "./camera-view";
 import { HoldToSpeak } from "./hold-to-speak";
 
+// SAM missed most objects in frames with a hand, so the counter is scanned in the background
+// while no hand is in view and a hold uses that scan straight away.
+const CHECK_INTERVAL_MS = 700;
+const HAND_CLEAR_MS = 700;
+const SCENE_CHANGE = 14;
+const SCAN_MAX_AGE_MS = 30_000;
+
 type Scan = { result: ScanResult; frame: { width: number; height: number } };
+type CachedScan = { scan: Scan; thumbnail: Thumbnail; at: number };
 
 export function PointSession() {
   const camera = useCamera();
   const pointing = usePointingSession(camera.videoRef, camera.status === "live");
   const [pointed, setPointed] = useState<Pointed | null>(null);
+  const cacheRef = useRef<CachedScan | null>(null);
   const scanRef = useRef<Promise<Scan> | null>(null);
-  // A new hold makes a scan still in flight stale.
+  const holdingRef = useRef(false);
+  // A new hold makes a result still in flight stale.
   const holdRef = useRef(0);
+
+  const { status: cameraStatus, videoRef } = camera;
+  const { status: trackerStatus, handSeenAtRef } = pointing;
+
+  useEffect(() => {
+    if (cameraStatus !== "live" || trackerStatus !== "ready") return;
+
+    const thumbnail = createThumbnailer();
+    let busy = false;
+
+    const timer = window.setInterval(() => {
+      const video = videoRef.current;
+      const now = performance.now();
+      if (busy || holdingRef.current || !video || now - handSeenAtRef.current < HAND_CLEAR_MS) return;
+
+      const snapshot = thumbnail(video);
+      if (!snapshot) return;
+
+      const cached = cacheRef.current;
+      const unchanged =
+        cached && now - cached.at < SCAN_MAX_AGE_MS && sceneDifference(cached.thumbnail, snapshot) < SCENE_CHANGE;
+      if (unchanged) return;
+
+      const frame = captureFrame(video);
+      if (!frame) return;
+
+      busy = true;
+      void requestScan(frame.url).then((result) => {
+        busy = false;
+        if (result.status !== "OK") return;
+        cacheRef.current = {
+          scan: { result, frame: { width: frame.width, height: frame.height } },
+          thumbnail: snapshot,
+          at: performance.now(),
+        };
+      });
+    }, CHECK_INTERVAL_MS);
+
+    return () => window.clearInterval(timer);
+  }, [cameraStatus, trackerStatus, videoRef, handSeenAtRef]);
 
   function handleHoldStart() {
     holdRef.current += 1;
+    holdingRef.current = true;
     setPointed(null);
     pointing.begin();
 
-    // Scanned at the press, before the hand moves in: SAM missed most objects in frames with a hand.
-    const video = camera.videoRef.current;
+    const cached = cacheRef.current;
+    if (cached && performance.now() - cached.at < SCAN_MAX_AGE_MS) {
+      scanRef.current = Promise.resolve(cached.scan);
+      return;
+    }
+
+    // No recent background scan (for example right after the camera started): scan now.
+    const video = videoRef.current;
     const frame = video ? captureFrame(video) : null;
     scanRef.current = frame
       ? requestScan(frame.url).then((result) => ({ result, frame: { width: frame.width, height: frame.height } }))
@@ -36,6 +92,7 @@ export function PointSession() {
   }
 
   async function handleHoldEnd(accepted: boolean) {
+    holdingRef.current = false;
     const dwells = pointing.end();
     const scan = scanRef.current;
     scanRef.current = null;

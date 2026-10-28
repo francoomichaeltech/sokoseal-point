@@ -12,16 +12,10 @@ import { catalogueKeywords } from "@/lib/voice/keywords";
 
 type Heard =
   | { state: "idle" }
-  | { state: "processing" }
-  | { state: "done"; transcript: string; intent: IntentResult }
+  | { state: "processing"; stage: "transcribing" | "understanding" }
+  | { state: "done"; heard: string; intent: IntentResult }
   | { state: "short" }
   | { state: "error" };
-
-const NO_ACTIONS: IntentResult = {
-  status: "OK",
-  intent: { actions: [], needsClarification: false },
-  latencyMs: 0,
-};
 
 type HoldToSpeakProps = {
   onHoldStart: () => void;
@@ -29,6 +23,24 @@ type HoldToSpeakProps = {
   onHoldEnd: (accepted: boolean) => void;
   pointCount: number;
 };
+
+const NO_ACTIONS: IntentResult = {
+  status: "OK",
+  intent: { transcript: "", actions: [], needsClarification: false },
+  latencyMs: 0,
+};
+
+// Case and punctuation fixes alone are not worth showing the original for.
+function sameWords(a: string, b: string) {
+  const words = (text: string) =>
+    text
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .split(/\s+/)
+      .filter(Boolean)
+      .join(" ");
+  return words(a) === words(b);
+}
 
 export function HoldToSpeak({ onHoldStart, onHoldEnd, pointCount }: HoldToSpeakProps) {
   const { status, level, start, stop } = useMic();
@@ -48,25 +60,30 @@ export function HoldToSpeak({ onHoldStart, onHoldEnd, pointCount }: HoldToSpeakP
     const wasListening = status === "listening";
     const recording = stop();
     onHoldEnd(recording !== null);
-
     if (!recording) {
       if (wasListening) setHeard({ state: "short" });
       return;
     }
 
     const id = requestRef.current;
-    setHeard({ state: "processing" });
+    const keywords = catalogueKeywords(products ?? []);
+    setHeard({ state: "processing", stage: "transcribing" });
 
-    const heardSpeech = await requestTranscript(recording.wav, catalogueKeywords(products ?? []));
+    const speech = await requestTranscript(recording.wav, keywords);
     if (id !== requestRef.current) return;
-    if (heardSpeech.status !== "OK") {
+    if (speech.status !== "OK") {
       setHeard({ state: "error" });
       return;
     }
+    if (!speech.transcript) {
+      setHeard({ state: "done", heard: "", intent: NO_ACTIONS });
+      return;
+    }
 
-    const intent = heardSpeech.transcript ? await requestIntent(heardSpeech.transcript) : NO_ACTIONS;
+    setHeard({ state: "processing", stage: "understanding" });
+    const intent = await requestIntent(speech.transcript, keywords);
     if (id !== requestRef.current) return;
-    setHeard({ state: "done", transcript: heardSpeech.transcript, intent });
+    setHeard({ state: "done", heard: speech.transcript, intent });
   }
 
   function cancel() {
@@ -74,6 +91,11 @@ export function HoldToSpeak({ onHoldStart, onHoldEnd, pointCount }: HoldToSpeakP
     stop();
     onHoldEnd(false);
   }
+
+  const done = heard.state === "done" ? heard : null;
+  const intent = done?.intent.status === "OK" ? done.intent.intent : null;
+  const shown = intent?.transcript || done?.heard || "";
+  const corrected = done !== null && shown !== "" && !sameWords(shown, done.heard);
 
   return (
     <div className="flex shrink-0 flex-col items-center gap-2">
@@ -84,25 +106,30 @@ export function HoldToSpeak({ onHoldStart, onHoldEnd, pointCount }: HoldToSpeakP
         {heard.state === "processing" && (
           <p className="flex items-center gap-1.5">
             <LoaderCircle aria-hidden size={16} className="shrink-0 animate-spin" />
-            {t.voice.processing}
+            {t.voice[heard.stage]}
           </p>
         )}
 
-        {heard.state === "done" && (
+        {done && (
           <>
-            {heard.transcript ? (
-              <p className="line-clamp-2 font-medium">“{heard.transcript}”</p>
+            {shown ? (
+              <p className="line-clamp-2 font-medium">“{shown}”</p>
             ) : (
               <p className="text-muted">{t.voice.empty}</p>
             )}
+            {corrected && (
+              <p className="line-clamp-1 text-xs text-muted">
+                {t.voice.heard} “{done.heard}”
+              </p>
+            )}
 
-            {heard.intent.status === "ERROR" ? (
+            {done.intent.status === "ERROR" ? (
               <p className="text-danger">{t.voice.error}</p>
-            ) : heard.intent.intent.actions.length === 0 ? (
-              heard.transcript && <p className="text-muted">{t.intent.none}</p>
+            ) : !intent || intent.actions.length === 0 ? (
+              shown && <p className="text-muted">{t.intent.none}</p>
             ) : (
               <ol className="flex max-h-28 w-full flex-col gap-1 overflow-y-auto text-left">
-                {heard.intent.intent.actions.map((action, index) => (
+                {intent.actions.map((action, index) => (
                   <li
                     key={index}
                     className="flex items-baseline gap-2 rounded-control border border-line bg-surface px-2 py-1"
@@ -119,9 +146,7 @@ export function HoldToSpeak({ onHoldStart, onHoldEnd, pointCount }: HoldToSpeakP
               </ol>
             )}
 
-            {heard.intent.status === "OK" && heard.intent.intent.needsClarification && (
-              <p className="text-attention">{t.intent.unclear}</p>
-            )}
+            {intent?.needsClarification && <p className="text-attention">{t.intent.unclear}</p>}
           </>
         )}
 

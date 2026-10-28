@@ -117,6 +117,9 @@ const en = {
     },
     voice: {
       processing: "Processing…",
+      transcribing: "Listening to what you said…",
+      understanding: "Working out your request…",
+      heard: "Heard:",
       empty: "No words heard. Hold the button and speak.",
       tooShort: "Hold the button while you speak.",
       error: "Couldn't process that. Try again.",
@@ -248,6 +251,9 @@ const sw: Messages = {
     },
     voice: {
       processing: "Inachakata…",
+      transcribing: "Inasikiliza ulichosema…",
+      understanding: "Inaelewa ombi lako…",
+      heard: "Imesikika:",
       empty: "Hakuna maneno yaliyosikika. Shikilia kitufe na uongee.",
       tooShort: "Shikilia kitufe wakati unaongea.",
       error: "Imeshindwa kuchakata. Jaribu tena.",

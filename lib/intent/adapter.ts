@@ -3,14 +3,15 @@ import { INTENT_SCHEMA, intentPrompt } from "./prompt";
 import type { IntentResult } from "./types";
 import { parseIntent } from "./validate";
 
-export async function resolveIntent(transcript: string): Promise<IntentResult> {
+export async function resolveIntent(transcript: string, products: string[] = []): Promise<IntentResult> {
   const started = Date.now();
   if (!transcript.trim()) {
-    return { status: "OK", intent: { actions: [], needsClarification: false }, latencyMs: 0 };
+    return { status: "OK", intent: { transcript: "", actions: [], needsClarification: false }, latencyMs: 0 };
   }
 
   try {
-    const intent = parseIntent(await completeJson(intentPrompt(transcript), "shop_actions", INTENT_SCHEMA));
+    const raw = await completeJson(intentPrompt(transcript, products), "shop_actions", INTENT_SCHEMA);
+    const intent = parseIntent(raw);
     if (!intent) {
       console.error("[intent] model output failed validation");
       return { status: "ERROR", latencyMs: Date.now() - started };

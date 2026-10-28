@@ -23,6 +23,8 @@ export function usePointingSession(videoRef: RefObject<HTMLVideoElement | null>,
   const [count, setCount] = useState(0);
   const dwellsRef = useRef<Dwell[]>([]);
   const sinceRef = useRef<number | null>(null);
+  // Last time a hand was in view, so the counter is only scanned when it is clear.
+  const handSeenAtRef = useRef(-Infinity);
 
   useEffect(() => {
     if (!enabled) return;
@@ -80,6 +82,7 @@ export function usePointingSession(videoRef: RefObject<HTMLVideoElement | null>,
           // A dropped frame is not worth surfacing; the next tick tries again.
           return;
         }
+        if (ray) handSeenAtRef.current = now;
 
         const dwell = detector.update(ray, now);
         if (dwell) record(dwell, now);
@@ -122,5 +125,5 @@ export function usePointingSession(videoRef: RefObject<HTMLVideoElement | null>,
     return taken;
   }, []);
 
-  return { status, count, begin, end };
+  return { status, count, begin, end, handSeenAtRef };
 }

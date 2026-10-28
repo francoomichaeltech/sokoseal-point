@@ -3,6 +3,7 @@ import type { ActionKind, Intent, IntentAction, Reference } from "./types";
 export const MAX_ACTIONS = 6;
 const MAX_QUANTITY = 999;
 const MAX_TEXT_LENGTH = 200;
+const MAX_TRANSCRIPT_LENGTH = 500;
 
 const ACTIONS: readonly ActionKind[] = ["ADD", "REMOVE", "SET"];
 const REFERENCES: readonly Reference[] = ["POINT", "SAME", "NAMED"];
@@ -29,8 +30,13 @@ function cleanQuantity(value: unknown): number | null {
 export function parseIntent(raw: unknown): Intent | null {
   if (typeof raw !== "object" || raw === null) return null;
 
-  const { actions, needs_clarification } = raw as Record<string, unknown>;
-  if (!Array.isArray(actions) || actions.length > MAX_ACTIONS || typeof needs_clarification !== "boolean") {
+  const { transcript, actions, needs_clarification } = raw as Record<string, unknown>;
+  if (
+    typeof transcript !== "string" ||
+    !Array.isArray(actions) ||
+    actions.length > MAX_ACTIONS ||
+    typeof needs_clarification !== "boolean"
+  ) {
     return null;
   }
 
@@ -59,5 +65,5 @@ export function parseIntent(raw: unknown): Intent | null {
     });
   }
 
-  return { actions: parsed, needsClarification };
+  return { transcript: transcript.trim().slice(0, MAX_TRANSCRIPT_LENGTH), actions: parsed, needsClarification };
 }
