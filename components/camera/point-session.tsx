@@ -1,3 +1,5 @@
+// components/camera/point-session.tsx
+
 "use client";
 
 import { useRef, useState } from "react";
@@ -45,8 +47,13 @@ export function PointSession() {
 
     setPointed(
       result.status === "OK"
-        ? { frame, selections: dwells.map((dwell) => resolveDwell(result.boxes, dwell)), scanFailed: false }
-        : { frame, selections: [], scanFailed: true },
+        ? {
+            frame,
+            selections: dwells.map((dwell) => resolveDwell(result.boxes, dwell)),
+            objectCount: result.boxes.length,
+            scanFailed: false,
+          }
+        : { frame, selections: [], objectCount: 0, scanFailed: true },
     );
   }
 

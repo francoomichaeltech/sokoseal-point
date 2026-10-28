@@ -88,6 +88,9 @@ const en = {
       searching: "Point your finger at a product.",
       aim: "Hold the light still on a product.",
       counted: (count: number): string => (count === 1 ? "1 product pointed" : `${count} products pointed`),
+      noDwell: "No pointing seen. Keep your hand in view and pause your finger on each product.",
+      noObjects: "No products seen on the counter. Press the mic with your hand out of view.",
+      summary: (pointed: number, found: number): string => `${pointed} pointed · ${found} on the counter`,
     },
     ground: {
       checking: "Checking what you're pointing at…",
@@ -216,6 +219,9 @@ const sw: Messages = {
       searching: "Nyoosha kidole kwenye bidhaa.",
       aim: "Tuliza mwanga juu ya bidhaa.",
       counted: (count) => `Umeelekeza: ${count}`,
+      noDwell: "Sikuona ukielekeza. Weka mkono ndani ya kamera na utulize kidole kwenye kila bidhaa.",
+      noObjects: "Sikuona bidhaa kaunta. Bonyeza mic mkono ukiwa nje ya picha.",
+      summary: (pointed, found) => `Umeelekeza: ${pointed} · Vitu kaunta: ${found}`,
     },
     ground: {
       checking: "Inakagua unachoelekeza…",

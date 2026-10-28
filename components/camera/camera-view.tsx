@@ -1,8 +1,11 @@
+// components/camera/camera-view.tsx
+
 "use client";
 
 import { Camera, LoaderCircle, TriangleAlert } from "lucide-react";
 import type { Selection } from "@/lib/grounding/types";
 import { useMessages } from "@/lib/i18n/locale";
+import type { Messages } from "@/lib/i18n/messages";
 import type { useCamera } from "@/lib/media/use-camera";
 import type { TrackerStatus } from "@/lib/pointing/use-pointing-session";
 import { boxToView } from "@/lib/pointing/viewport";
@@ -12,6 +15,8 @@ export type Pointed = {
   frame: { width: number; height: number };
   /** One entry per finger pause, in the order they happened. */
   selections: Selection[];
+  /** Objects SAM found on the counter at the press. */
+  objectCount: number;
   scanFailed: boolean;
 };
 
@@ -21,20 +26,26 @@ type CameraViewProps = {
   pointed: Pointed | null;
 };
 
+type Chip = { text: string; tone: "neutral" | "busy" | "attention" };
+
+// After a hold, says what pointing captured so a missing outline has a visible reason.
+function statusChip(tracker: TrackerStatus, pointed: Pointed | null, t: Messages["point"]): Chip {
+  if (tracker === "error") return { text: t.pointing.unsupported, tone: "attention" };
+  if (tracker === "loading") return { text: t.pointing.loading, tone: "busy" };
+  if (!pointed) return { text: t.hint, tone: "neutral" };
+  if (pointed.scanFailed) return { text: t.ground.error, tone: "attention" };
+  if (pointed.selections.length === 0) return { text: t.pointing.noDwell, tone: "attention" };
+  if (pointed.objectCount === 0) return { text: t.pointing.noObjects, tone: "attention" };
+  return { text: t.pointing.summary(pointed.selections.length, pointed.objectCount), tone: "neutral" };
+}
+
 export function CameraView({ camera, tracker, pointed }: CameraViewProps) {
   const { videoRef, status, start } = camera;
   const [viewRef, view] = useElementSize<HTMLDivElement>();
   const t = useMessages().point;
   const live = status === "live";
 
-  const chip =
-    tracker === "error"
-      ? { text: t.pointing.unsupported, tone: "attention" }
-      : tracker === "loading"
-        ? { text: t.pointing.loading, tone: "busy" }
-        : pointed?.scanFailed
-          ? { text: t.ground.error, tone: "attention" }
-          : { text: t.hint, tone: "neutral" };
+  const chip = statusChip(tracker, pointed, t);
 
   return (
     <div ref={viewRef} className="viewfinder h-full rounded-card">
