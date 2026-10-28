@@ -19,8 +19,8 @@ type Heard =
 
 type HoldToSpeakProps = {
   onHoldStart: () => void;
-  /** accepted is false when the hold was too short or cancelled. */
-  onHoldEnd: (accepted: boolean) => void;
+  /** accepted is false when the hold was too short or cancelled. Returns the number of finger pauses. */
+  onHoldEnd: (accepted: boolean) => number;
   /** Called once per hold with the parsed request. */
   onIntent: (intent: Intent) => void;
   pointCount: number;
@@ -63,7 +63,7 @@ export function HoldToSpeak({ onHoldStart, onHoldEnd, onIntent, pointCount, chil
   async function release() {
     const wasListening = status === "listening";
     const recording = stop();
-    onHoldEnd(recording !== null);
+    const pauses = onHoldEnd(recording !== null);
     if (!recording) {
       if (wasListening) setHeard({ state: "short" });
       return;
@@ -85,7 +85,7 @@ export function HoldToSpeak({ onHoldStart, onHoldEnd, onIntent, pointCount, chil
     }
 
     setHeard({ state: "processing", stage: "understanding" });
-    const intent = await requestIntent(speech.transcript, keywords);
+    const intent = await requestIntent(speech.transcript, keywords, pauses);
     if (id !== requestRef.current) return;
     setHeard({ state: "done", heard: speech.transcript, intent });
     if (intent.status === "OK") onIntent(intent.intent);

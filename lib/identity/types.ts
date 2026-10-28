@@ -2,7 +2,7 @@
 export const UNKNOWN = "unknown";
 export const AMBIGUOUS = "ambiguous";
 
-export type ReferenceProduct = { sku: string; name: string; image: string };
+export type ReferenceProduct = { sku: string; name: string; hint?: string; images: string[] };
 
 export type IdentityResult =
   /** One entry per target, in order: a SKU from the request, UNKNOWN or AMBIGUOUS. */

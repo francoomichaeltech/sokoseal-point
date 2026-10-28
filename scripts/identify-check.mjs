@@ -22,7 +22,7 @@ const products = await Promise.all(
       console.error(`Bad reference "${spec}", expected SKU:Name:file.jpg`);
       process.exit(1);
     }
-    return { sku, name, image: await toDataUrl(file) };
+    return { sku, name, images: [await toDataUrl(file)] };
   }),
 );
 const targets = await Promise.all(args.slice(split + 1).map(toDataUrl));

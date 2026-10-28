@@ -48,3 +48,20 @@ export class DwellDetector {
     return { ...ray, at: now };
   }
 }
+
+// A finger that wobbles on a large product can pass REARM_RADIUS and record a second pause
+// for the same point. Pauses close in place and time are treated as one.
+const MERGE_RADIUS = 0.1;
+const MERGE_GAP_MS = 1_200;
+
+export function mergeDwells(dwells: Dwell[]): Dwell[] {
+  const merged: Dwell[] = [];
+
+  for (const dwell of dwells) {
+    const last = merged.at(-1);
+    if (last && dwell.at - last.at <= MERGE_GAP_MS && distance(dwell.tip, last.tip) <= MERGE_RADIUS) continue;
+    merged.push(dwell);
+  }
+
+  return merged;
+}

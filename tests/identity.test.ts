@@ -17,7 +17,7 @@ describe("identitySchema", () => {
 describe("identityContent", () => {
   it("sends one text part listing the image order, then the images", () => {
     const content = identityContent(["data:image/jpeg;base64,T"], [
-      { sku: "MUG1", name: 'Mug "big"', image: "data:image/jpeg;base64,R" },
+      { sku: "MUG1", name: 'Mug "big"', images: ["data:image/jpeg;base64,R"] },
     ]);
     const text = content[0].type === "input_text" ? content[0].text : "";
 
@@ -26,6 +26,17 @@ describe("identityContent", () => {
     expect(text).toContain("Image 2: crop T1");
     expect(content[1]).toEqual({ type: "input_image", image_url: "data:image/jpeg;base64,R" });
     expect(content[2]).toEqual({ type: "input_image", image_url: "data:image/jpeg;base64,T" });
+  });
+
+  it("labels every reference photo of a product with its hint", () => {
+    const content = identityContent(["data:image/jpeg;base64,T"], [
+      { sku: "COKE1", name: "Coca-Cola", hint: "red label", images: ["data:image/jpeg;base64,A", "data:image/jpeg;base64,B"] },
+    ]);
+    const text = content[0].type === "input_text" ? content[0].text : "";
+
+    expect(text).toContain('Image 1: reference COKE1 "Coca-Cola" "red label"');
+    expect(text).toContain('Image 2: reference COKE1 "Coca-Cola" "red label"');
+    expect(text).toContain("Image 3: crop T1");
   });
 });
 

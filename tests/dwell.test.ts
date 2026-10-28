@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DwellDetector } from "../lib/pointing/dwell";
+import { DwellDetector, mergeDwells } from "../lib/pointing/dwell";
 
 const hand = { x1: 0.4, y1: 0.6, x2: 0.6, y2: 1 };
 const ray = (x: number) => ({ tip: { x, y: 0.5 }, direction: { x: 0, y: -1 }, hand });
@@ -38,5 +38,18 @@ describe("DwellDetector", () => {
     detector.update(null, 400);
     expect(detector.update(ray(0.5), 450)).toBeNull();
     expect(detector.update(ray(0.5), 600)).toBeNull();
+  });
+});
+
+describe("mergeDwells", () => {
+  const dwell = (x: number, at: number) => ({ ...ray(x), at });
+
+  it("merges a pause that wobbled next to the previous one", () => {
+    expect(mergeDwells([dwell(0.5, 0), dwell(0.57, 700)])).toHaveLength(1);
+  });
+
+  it("keeps pauses on different places or far apart in time", () => {
+    expect(mergeDwells([dwell(0.5, 0), dwell(0.8, 700), dwell(0.5, 1400)])).toHaveLength(3);
+    expect(mergeDwells([dwell(0.5, 0), dwell(0.52, 3000)])).toHaveLength(2);
   });
 });

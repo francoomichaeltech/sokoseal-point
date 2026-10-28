@@ -3,11 +3,13 @@ import { identify } from "@/lib/identity/adapter";
 import type { ReferenceProduct } from "@/lib/identity/types";
 
 const JPEG_PREFIX = "data:image/jpeg;base64,";
-// Crops are at most 384 px and references 256 px on the long edge.
-const MAX_IMAGE_CHARS = 200_000;
-const MAX_TARGETS = 6;
-const MAX_PRODUCTS = 12;
+// Crops are at most 512 px and references 320 px on the long edge.
+const MAX_IMAGE_CHARS = 300_000;
+const MAX_TARGETS = 12;
+const MAX_PRODUCTS = 10;
+const MAX_IMAGES_PER_PRODUCT = 3;
 const MAX_NAME_LENGTH = 60;
+const MAX_HINT_LENGTH = 120;
 const SKU_PATTERN = /^[A-Z0-9-]{1,20}$/;
 
 function isImage(value: unknown): value is string {
@@ -15,9 +17,9 @@ function isImage(value: unknown): value is string {
 }
 
 function parseTargets(value: unknown): string[] | null {
-  return Array.isArray(value) && value.length > 0 && value.length <= MAX_TARGETS && value.every(isImage)
-    ? value
-    : null;
+  if (!Array.isArray(value)) return null;
+  const targets = value.filter(isImage);
+  return targets.length > 0 && targets.length === value.length && targets.length <= MAX_TARGETS ? targets : null;
 }
 
 function parseProducts(value: unknown): ReferenceProduct[] | null {
@@ -28,13 +30,25 @@ function parseProducts(value: unknown): ReferenceProduct[] | null {
 
   for (const item of value) {
     if (typeof item !== "object" || item === null) return null;
-    const { sku, name, image } = item as Record<string, unknown>;
+    const { sku, name, hint, images } = item as Record<string, unknown>;
 
     if (typeof sku !== "string" || !SKU_PATTERN.test(sku) || seen.has(sku)) return null;
-    if (typeof name !== "string" || !name.trim() || name.length > MAX_NAME_LENGTH || !isImage(image)) return null;
+    if (typeof name !== "string" || !name.trim() || name.length > MAX_NAME_LENGTH) return null;
+    if (hint !== undefined && (typeof hint !== "string" || hint.length > MAX_HINT_LENGTH)) return null;
+
+    const photos = Array.isArray(images) ? images.filter(isImage) : [];
+    if (
+      !Array.isArray(images) ||
+      photos.length === 0 ||
+      photos.length !== images.length ||
+      photos.length > MAX_IMAGES_PER_PRODUCT
+    ) {
+      return null;
+    }
 
     seen.add(sku);
-    products.push({ sku, name: name.trim(), image });
+    const cleanHint = typeof hint === "string" && hint.trim() ? hint.trim() : undefined;
+    products.push({ sku, name: name.trim(), hint: cleanHint, images: photos });
   }
 
   return products;

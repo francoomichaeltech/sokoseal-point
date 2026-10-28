@@ -60,7 +60,7 @@ describe("parseIntent", () => {
   });
 
   it("rejects more actions than one hold may contain", () => {
-    expect(parseIntent(response(Array.from({ length: 7 }, () => action())))).toBeNull();
+    expect(parseIntent(response(Array.from({ length: 11 }, () => action())))).toBeNull();
   });
 
   it("rejects output that is not an object", () => {
@@ -78,5 +78,10 @@ describe("intentPrompt", () => {
     const prompt = intentPrompt("nipe kikombe", ["Mug", "kikombe"]);
     expect(prompt).toContain('Product names used in this shop: ["Mug","kikombe"]');
     expect(prompt.indexOf("Product names")).toBeLessThan(prompt.indexOf("Transcript:"));
+  });
+
+  it("tells the model how many times the person pointed", () => {
+    expect(intentPrompt("naomba kumi", [], 3)).toContain("Pointing count: 3.");
+    expect(intentPrompt("naomba kumi")).not.toContain("Pointing count");
   });
 });

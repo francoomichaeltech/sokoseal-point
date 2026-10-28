@@ -1,10 +1,11 @@
 import { isSameOrigin } from "@/lib/http/same-origin";
 import { resolveIntent } from "@/lib/intent/adapter";
 
-// About 15 s of speech; anything longer did not come from one hold.
-const MAX_TRANSCRIPT_CHARS = 500;
+// About 20 s of speech; anything longer did not come from one hold.
+const MAX_TRANSCRIPT_CHARS = 800;
 const MAX_PRODUCTS = 50;
 const MAX_PRODUCT_LENGTH = 40;
+const MAX_POINTS = 12;
 
 function parseProducts(value: unknown): string[] | null {
   if (value === undefined) return [];
@@ -16,6 +17,14 @@ function parseProducts(value: unknown): string[] | null {
     products.push(item.trim());
   }
   return products;
+}
+
+// undefined means invalid; null means the client did not report pointing.
+function parsePointCount(value: unknown): number | null | undefined {
+  if (value === undefined || value === null) return null;
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= MAX_POINTS
+    ? value
+    : undefined;
 }
 
 export async function POST(request: Request) {
@@ -30,11 +39,18 @@ export async function POST(request: Request) {
     return Response.json({ error: "invalid json" }, { status: 400 });
   }
 
-  const { transcript } = body ?? {};
+  const transcript = body?.transcript;
   const products = parseProducts(body?.products);
-  if (typeof transcript !== "string" || transcript.length > MAX_TRANSCRIPT_CHARS || products === null) {
+  const pointCount = parsePointCount(body?.pointCount);
+
+  if (
+    typeof transcript !== "string" ||
+    transcript.length > MAX_TRANSCRIPT_CHARS ||
+    products === null ||
+    pointCount === undefined
+  ) {
     return Response.json({ error: "invalid request" }, { status: 400 });
   }
 
-  return Response.json(await resolveIntent(transcript, products));
+  return Response.json(await resolveIntent(transcript, products, pointCount));
 }

@@ -12,7 +12,7 @@ import type { TargetIdentity } from "@/lib/identity/types";
 import type { Intent } from "@/lib/intent/types";
 import { captureFrame, type Frame } from "@/lib/media/capture";
 import { useCamera } from "@/lib/media/use-camera";
-import type { Dwell } from "@/lib/pointing/dwell";
+import { mergeDwells, type Dwell } from "@/lib/pointing/dwell";
 import { resolveDwell } from "@/lib/pointing/resolve";
 import { createThumbnailer, sceneDifference, type Thumbnail } from "@/lib/pointing/scene";
 import { usePointingSession } from "@/lib/pointing/use-pointing-session";
@@ -137,12 +137,13 @@ export function PointSession() {
     return toPointedTargets(selections, labels);
   }
 
-  function handleHoldEnd(accepted: boolean) {
+  // Returns the number of finger pauses so the request parser knows how often the user pointed.
+  function handleHoldEnd(accepted: boolean): number {
     holdingRef.current = false;
-    const dwells = pointing.end();
+    const dwells = mergeDwells(pointing.end());
     const scan = scanRef.current;
     scanRef.current = null;
-    if (!accepted) return;
+    if (!accepted) return 0;
 
     const id = holdRef.current;
     const failed = () => dwells.map((): PointedTarget => ({ state: "error" }));
@@ -151,6 +152,7 @@ export function PointSession() {
       id,
       promise: scan ? locateTargets(id, scan, dwells).catch(failed) : Promise.resolve(failed()),
     };
+    return dwells.length;
   }
 
   async function handleIntent(intent: Intent) {
