@@ -15,14 +15,17 @@ describe("identitySchema", () => {
 });
 
 describe("identityContent", () => {
-  it("puts references before crops and quotes product names", () => {
+  it("sends one text part listing the image order, then the images", () => {
     const content = identityContent(["data:image/jpeg;base64,T"], [
       { sku: "MUG1", name: 'Mug "big"', image: "data:image/jpeg;base64,R" },
     ]);
-    const texts = content.flatMap((part) => (part.type === "input_text" ? [part.text] : []));
+    const text = content[0].type === "input_text" ? content[0].text : "";
 
-    expect(texts).toContain('Reference MUG1 "Mug \\"big\\"":');
-    expect(texts.indexOf('Reference MUG1 "Mug \\"big\\"":')).toBeLessThan(texts.indexOf("Crop T1:"));
+    expect(content.map((part) => part.type)).toEqual(["input_text", "input_image", "input_image"]);
+    expect(text).toContain('Image 1: reference MUG1 "Mug \\"big\\""');
+    expect(text).toContain("Image 2: crop T1");
+    expect(content[1]).toEqual({ type: "input_image", image_url: "data:image/jpeg;base64,R" });
+    expect(content[2]).toEqual({ type: "input_image", image_url: "data:image/jpeg;base64,T" });
   });
 });
 
