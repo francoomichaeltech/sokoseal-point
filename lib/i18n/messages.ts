@@ -111,6 +111,12 @@ const en = {
       unavailable: "No microphone found.",
       error: "The microphone could not start. Try again.",
     },
+    voice: {
+      processing: "Processing…",
+      empty: "No words heard. Hold the button and speak.",
+      tooShort: "Hold the button while you speak.",
+      error: "Couldn't process that. Try again.",
+    },
   },
 };
 
@@ -224,6 +230,12 @@ const sw: Messages = {
       denied: "Maikrofoni imezuiwa. Iruhusu kwenye mipangilio ya kivinjari.",
       unavailable: "Hakuna maikrofoni.",
       error: "Maikrofoni imeshindwa kuwaka. Jaribu tena.",
+    },
+    voice: {
+      processing: "Inachakata…",
+      empty: "Hakuna maneno yaliyosikika. Shikilia kitufe na uongee.",
+      tooShort: "Shikilia kitufe wakati unaongea.",
+      error: "Imeshindwa kuchakata. Jaribu tena.",
     },
   },
 };
