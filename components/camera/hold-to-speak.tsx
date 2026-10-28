@@ -23,7 +23,14 @@ const NO_ACTIONS: IntentResult = {
   latencyMs: 0,
 };
 
-export function HoldToSpeak() {
+type HoldToSpeakProps = {
+  onHoldStart: () => void;
+  /** accepted is false when the hold was too short or cancelled. */
+  onHoldEnd: (accepted: boolean) => void;
+  pointCount: number;
+};
+
+export function HoldToSpeak({ onHoldStart, onHoldEnd, pointCount }: HoldToSpeakProps) {
   const { status, level, start, stop } = useMic();
   const products = useProducts();
   const t = useMessages().point;
@@ -33,12 +40,15 @@ export function HoldToSpeak() {
 
   function press() {
     requestRef.current += 1;
+    onHoldStart();
     void start();
   }
 
   async function release() {
     const wasListening = status === "listening";
     const recording = stop();
+    onHoldEnd(recording !== null);
+
     if (!recording) {
       if (wasListening) setHeard({ state: "short" });
       return;
@@ -62,6 +72,7 @@ export function HoldToSpeak() {
   function cancel() {
     requestRef.current += 1;
     stop();
+    onHoldEnd(false);
   }
 
   return (
@@ -149,7 +160,10 @@ export function HoldToSpeak() {
         <Mic aria-hidden size={28} />
       </button>
 
-      <p className="text-sm font-medium">{status === "idle" ? t.mic.hold : t.mic[status]}</p>
+      <p className="text-sm font-medium">
+        {status === "idle" ? t.mic.hold : t.mic[status]}
+        {status === "listening" && <span className="text-muted"> · {t.pointing.counted(pointCount)}</span>}
+      </p>
     </div>
   );
 }

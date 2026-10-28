@@ -4,8 +4,7 @@ import Link from "next/link";
 import { PackagePlus } from "lucide-react";
 import { useProducts } from "@/lib/catalogue/store";
 import { useMessages } from "@/lib/i18n/locale";
-import { CameraView } from "./camera-view";
-import { HoldToSpeak } from "./hold-to-speak";
+import { PointSession } from "./point-session";
 
 export function PointStage() {
   const products = useProducts();
@@ -30,12 +29,5 @@ export function PointStage() {
     );
   }
 
-  return (
-    <div className="mx-auto flex h-full max-w-md flex-col gap-4 p-4">
-      <div className="min-h-0 flex-1">
-        <CameraView />
-      </div>
-      <HoldToSpeak />
-    </div>
-  );
+  return <PointSession />;
 }

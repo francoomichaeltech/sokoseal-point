@@ -87,6 +87,7 @@ const en = {
       unsupported: "Finger tracking isn't available on this device.",
       searching: "Point your finger at a product.",
       aim: "Hold the light still on a product.",
+      counted: (count: number): string => (count === 1 ? "1 product pointed" : `${count} products pointed`),
     },
     ground: {
       checking: "Checking what you're pointing at…",
@@ -214,6 +215,7 @@ const sw: Messages = {
       unsupported: "Ufuatiliaji wa kidole haupatikani kwenye kifaa hiki.",
       searching: "Nyoosha kidole kwenye bidhaa.",
       aim: "Tuliza mwanga juu ya bidhaa.",
+      counted: (count) => `Umeelekeza: ${count}`,
     },
     ground: {
       checking: "Inakagua unachoelekeza…",
