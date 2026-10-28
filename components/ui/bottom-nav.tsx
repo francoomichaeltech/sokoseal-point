@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Box, LocateFixed, ShoppingCart } from "lucide-react";
 import { useMessages } from "@/lib/i18n/locale";
+import { useBasket } from "@/lib/commerce/store";
 
 const items = [
   { href: "/products", key: "products", Icon: Box },
@@ -11,13 +12,11 @@ const items = [
   { href: "/basket", key: "basket", Icon: ShoppingCart },
 ] as const;
 
-type BottomNavProps = {
-  basketCount?: number;
-};
-
-export function BottomNav({ basketCount = 0 }: BottomNavProps) {
+export function BottomNav() {
   const pathname = usePathname();
   const t = useMessages();
+  const basket = useBasket();
+  const basketCount = basket?.lines.reduce((sum, line) => sum + line.quantity, 0) ?? 0;
 
   return (
     <nav
@@ -46,7 +45,7 @@ export function BottomNav({ basketCount = 0 }: BottomNavProps) {
                       data-qty
                       className="absolute -top-1.5 -right-2 grid h-4 min-w-4 place-items-center rounded-full bg-danger px-1 text-[10px] leading-none font-semibold text-white"
                     >
-                      {basketCount}
+                      {basketCount > 99 ? "99+" : basketCount}
                     </span>
                   )}
                 </span>

@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { LoaderCircle, Mic } from "lucide-react";
 import { useProducts } from "@/lib/catalogue/store";
 import { useMessages } from "@/lib/i18n/locale";
 import { requestIntent } from "@/lib/intent/client";
-import type { IntentResult } from "@/lib/intent/types";
+import type { Intent, IntentResult } from "@/lib/intent/types";
 import { useMic } from "@/lib/media/use-mic";
 import { requestTranscript } from "@/lib/voice/client";
 import { catalogueKeywords } from "@/lib/voice/keywords";
@@ -21,7 +21,11 @@ type HoldToSpeakProps = {
   onHoldStart: () => void;
   /** accepted is false when the hold was too short or cancelled. */
   onHoldEnd: (accepted: boolean) => void;
+  /** Called once per hold with the parsed request. */
+  onIntent: (intent: Intent) => void;
   pointCount: number;
+  /** Shown under the transcript when the request has actions. */
+  children?: ReactNode;
 };
 
 const NO_ACTIONS: IntentResult = {
@@ -42,7 +46,7 @@ function sameWords(a: string, b: string) {
   return words(a) === words(b);
 }
 
-export function HoldToSpeak({ onHoldStart, onHoldEnd, pointCount }: HoldToSpeakProps) {
+export function HoldToSpeak({ onHoldStart, onHoldEnd, onIntent, pointCount, children }: HoldToSpeakProps) {
   const { status, level, start, stop } = useMic();
   const products = useProducts();
   const t = useMessages().point;
@@ -84,6 +88,7 @@ export function HoldToSpeak({ onHoldStart, onHoldEnd, pointCount }: HoldToSpeakP
     const intent = await requestIntent(speech.transcript, keywords);
     if (id !== requestRef.current) return;
     setHeard({ state: "done", heard: speech.transcript, intent });
+    if (intent.status === "OK") onIntent(intent.intent);
   }
 
   function cancel() {
@@ -128,22 +133,7 @@ export function HoldToSpeak({ onHoldStart, onHoldEnd, pointCount }: HoldToSpeakP
             ) : !intent || intent.actions.length === 0 ? (
               shown && <p className="text-muted">{t.intent.none}</p>
             ) : (
-              <ol className="flex max-h-28 w-full flex-col gap-1 overflow-y-auto text-left">
-                {intent.actions.map((action, index) => (
-                  <li
-                    key={index}
-                    className="flex items-baseline gap-2 rounded-control border border-line bg-surface px-2 py-1"
-                  >
-                    <span data-qty className="shrink-0 font-semibold">
-                      {t.intent.actions[action.action]}{" "}
-                      {action.quantity ?? (action.action === "REMOVE" ? t.intent.all : "?")}
-                    </span>
-                    <span className="truncate text-muted">
-                      {t.intent.refs[action.reference]} · “{action.spoken}”
-                    </span>
-                  </li>
-                ))}
-              </ol>
+              children
             )}
 
             {intent?.needsClarification && <p className="text-attention">{t.intent.unclear}</p>}

@@ -137,6 +137,22 @@ const en = {
       ambiguous: "Unclear",
       error: "Couldn't check",
     },
+    outcome: {
+      checking: "Matching to your products…",
+      now: (count: number): string => `now ${count}`,
+      reasons: {
+        count_mismatch: "You pointed at a different number of products than you said.",
+        nothing_pointed: "No product where you pointed.",
+        not_in_shop: "Not a product in your shop.",
+        unclear_product: "Couldn't tell which product.",
+        check_failed: "Couldn't check that product.",
+        no_previous: "No earlier product to refer to.",
+        unclear_quantity: "Quantity unclear.",
+        not_in_basket: "Not in the basket.",
+        not_enough: "The basket has fewer than that.",
+        too_many: "More than 999 of one product.",
+      },
+    },
   },
 };
 
@@ -276,6 +292,22 @@ const sw: Messages = {
       unknown: "Haipo dukani",
       ambiguous: "Haieleweki",
       error: "Imeshindwa kukagua",
+    },
+    outcome: {
+      checking: "Inalinganisha na bidhaa zako…",
+      now: (count) => `sasa ${count}`,
+      reasons: {
+        count_mismatch: "Idadi ya bidhaa ulizoelekeza hailingani na ulichosema.",
+        nothing_pointed: "Hakuna bidhaa ulipoelekeza.",
+        not_in_shop: "Si bidhaa ya duka lako.",
+        unclear_product: "Haijulikani ni bidhaa ipi.",
+        check_failed: "Imeshindwa kukagua bidhaa.",
+        no_previous: "Hakuna bidhaa iliyotangulia.",
+        unclear_quantity: "Idadi haieleweki.",
+        not_in_basket: "Haipo kwenye kikapu.",
+        not_enough: "Kikapu kina chache kuliko hizo.",
+        too_many: "Zaidi ya 999 kwa bidhaa moja.",
+      },
     },
   },
 };
