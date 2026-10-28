@@ -1,9 +1,8 @@
-// components/camera/camera-view.tsx
-
 "use client";
 
 import { Camera, LoaderCircle, TriangleAlert } from "lucide-react";
-import type { Selection } from "@/lib/grounding/types";
+import type { Box, Selection } from "@/lib/grounding/types";
+import type { TargetIdentity } from "@/lib/identity/types";
 import { useMessages } from "@/lib/i18n/locale";
 import type { Messages } from "@/lib/i18n/messages";
 import type { useCamera } from "@/lib/media/use-camera";
@@ -15,7 +14,9 @@ export type Pointed = {
   frame: { width: number; height: number };
   /** One entry per finger pause, in the order they happened. */
   selections: Selection[];
-  /** Objects SAM found on the counter at the press. */
+  /** Identity of the object behind each MATCH selection; null for other selections. */
+  labels: (TargetIdentity | null)[];
+  /** Objects SAM found on the counter. */
   objectCount: number;
   scanFailed: boolean;
 };
@@ -28,6 +29,8 @@ type CameraViewProps = {
 
 type Chip = { text: string; tone: "neutral" | "busy" | "attention" };
 
+type Outline = { box: Box; numbers: number[]; label: TargetIdentity | null; ambiguous: boolean };
+
 // After a hold, says what pointing captured so a missing outline has a visible reason.
 function statusChip(tracker: TrackerStatus, pointed: Pointed | null, t: Messages["point"]): Chip {
   if (tracker === "error") return { text: t.pointing.unsupported, tone: "attention" };
@@ -39,12 +42,52 @@ function statusChip(tracker: TrackerStatus, pointed: Pointed | null, t: Messages
   return { text: t.pointing.summary(pointed.selections.length, pointed.objectCount), tone: "neutral" };
 }
 
+// One outline per object, listing every pause that pointed at it.
+function outlines(pointed: Pointed): Outline[] {
+  const byBox = new Map<Box, Outline>();
+
+  pointed.selections.forEach((selection, index) => {
+    const boxes =
+      selection.status === "MATCH" ? [selection.box] : selection.status === "AMBIGUOUS" ? selection.boxes : [];
+
+    for (const box of boxes) {
+      const existing = byBox.get(box);
+      if (existing) {
+        existing.numbers.push(index + 1);
+        continue;
+      }
+      byBox.set(box, {
+        box,
+        numbers: [index + 1],
+        label: selection.status === "MATCH" ? (pointed.labels[index] ?? null) : null,
+        ambiguous: selection.status === "AMBIGUOUS",
+      });
+    }
+  });
+
+  return [...byBox.values()];
+}
+
+function labelText(label: TargetIdentity, t: Messages["point"]): string {
+  switch (label.state) {
+    case "pending":
+      return t.identity.checking;
+    case "product":
+      return label.name;
+    case "unknown":
+      return t.identity.unknown;
+    case "ambiguous":
+      return t.identity.ambiguous;
+    default:
+      return t.identity.error;
+  }
+}
+
 export function CameraView({ camera, tracker, pointed }: CameraViewProps) {
   const { videoRef, status, start } = camera;
   const [viewRef, view] = useElementSize<HTMLDivElement>();
   const t = useMessages().point;
   const live = status === "live";
-
   const chip = statusChip(tracker, pointed, t);
 
   return (
@@ -53,30 +96,31 @@ export function CameraView({ camera, tracker, pointed }: CameraViewProps) {
 
       {live && pointed && (
         <div aria-hidden className="pointer-events-none absolute inset-0">
-          {pointed.selections.map((selection, index) => {
-            const matched = selection.status === "MATCH";
-            const boxes =
-              selection.status === "MATCH" ? [selection.box] : selection.status === "AMBIGUOUS" ? selection.boxes : [];
+          {outlines(pointed).map((outline, index) => {
+            const verified =
+              !outline.ambiguous &&
+              (outline.label === null || outline.label.state === "pending" || outline.label.state === "product");
 
-            return boxes.map((box, boxIndex) => (
+            return (
               <div
-                key={`${index}-${boxIndex}`}
+                key={index}
                 className={`absolute rounded-lg ${
-                  matched
+                  verified
                     ? "border-[3px] border-primary shadow-[0_0_0_1px_rgb(255_255_255/0.8)]"
                     : "border-2 border-dashed border-attention"
                 }`}
-                style={boxToView(box, view, pointed.frame)}
+                style={boxToView(outline.box, view, pointed.frame)}
               >
                 <span
-                  className={`absolute -top-3 -left-3 grid size-6 place-items-center rounded-full text-xs font-semibold text-white ${
-                    matched ? "bg-primary" : "bg-attention"
+                  className={`absolute -top-3 -left-3 flex h-6 max-w-44 min-w-6 items-center justify-center gap-1 rounded-full px-2 text-xs font-semibold whitespace-nowrap text-white ${
+                    verified ? "bg-primary" : "bg-attention"
                   }`}
                 >
-                  {index + 1}
+                  {outline.numbers.join(", ")}
+                  {outline.label && <span className="truncate font-medium">· {labelText(outline.label, t)}</span>}
                 </span>
               </div>
-            ));
+            );
           })}
         </div>
       )}

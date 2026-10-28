@@ -131,6 +131,12 @@ const en = {
       none: "No basket request heard.",
       unclear: "Part of that was unclear.",
     },
+    identity: {
+      checking: "Checking…",
+      unknown: "Not in your shop",
+      ambiguous: "Unclear",
+      error: "Couldn't check",
+    },
   },
 };
 
@@ -264,6 +270,12 @@ const sw: Messages = {
       all: "zote",
       none: "Hakuna ombi la kikapu lililosikika.",
       unclear: "Sehemu ya ombi haikueleweka.",
+    },
+    identity: {
+      checking: "Inakagua…",
+      unknown: "Haipo dukani",
+      ambiguous: "Haieleweki",
+      error: "Imeshindwa kukagua",
     },
   },
 };

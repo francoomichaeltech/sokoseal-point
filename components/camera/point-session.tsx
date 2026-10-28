@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useProducts } from "@/lib/catalogue/store";
 import { requestScan } from "@/lib/grounding/scan-client";
-import type { ScanResult } from "@/lib/grounding/types";
-import { captureFrame } from "@/lib/media/capture";
+import type { Box, ScanResult } from "@/lib/grounding/types";
+import { identifyTargets } from "@/lib/identity/identify-targets";
+import type { TargetIdentity } from "@/lib/identity/types";
+import { captureFrame, type Frame } from "@/lib/media/capture";
 import { useCamera } from "@/lib/media/use-camera";
 import { resolveDwell } from "@/lib/pointing/resolve";
 import { createThumbnailer, sceneDifference, type Thumbnail } from "@/lib/pointing/scene";
@@ -18,11 +21,12 @@ const HAND_CLEAR_MS = 700;
 const SCENE_CHANGE = 14;
 const SCAN_MAX_AGE_MS = 30_000;
 
-type Scan = { result: ScanResult; frame: { width: number; height: number } };
+type Scan = { result: ScanResult; frame: Frame };
 type CachedScan = { scan: Scan; thumbnail: Thumbnail; at: number };
 
 export function PointSession() {
   const camera = useCamera();
+  const products = useProducts();
   const pointing = usePointingSession(camera.videoRef, camera.status === "live");
   const [pointed, setPointed] = useState<Pointed | null>(null);
   const cacheRef = useRef<CachedScan | null>(null);
@@ -60,11 +64,7 @@ export function PointSession() {
       void requestScan(frame.url).then((result) => {
         busy = false;
         if (result.status !== "OK") return;
-        cacheRef.current = {
-          scan: { result, frame: { width: frame.width, height: frame.height } },
-          thumbnail: snapshot,
-          at: performance.now(),
-        };
+        cacheRef.current = { scan: { result, frame }, thumbnail: snapshot, at: performance.now() };
       });
     }, CHECK_INTERVAL_MS);
 
@@ -86,9 +86,7 @@ export function PointSession() {
     // No recent background scan (for example right after the camera started): scan now.
     const video = videoRef.current;
     const frame = video ? captureFrame(video) : null;
-    scanRef.current = frame
-      ? requestScan(frame.url).then((result) => ({ result, frame: { width: frame.width, height: frame.height } }))
-      : null;
+    scanRef.current = frame ? requestScan(frame.url).then((result) => ({ result, frame })) : null;
   }
 
   async function handleHoldEnd(accepted: boolean) {
@@ -102,16 +100,34 @@ export function PointSession() {
     const { result, frame } = await scan;
     if (id !== holdRef.current) return;
 
-    setPointed(
-      result.status === "OK"
-        ? {
-            frame,
-            selections: dwells.map((dwell) => resolveDwell(result.boxes, dwell)),
-            objectCount: result.boxes.length,
-            scanFailed: false,
-          }
-        : { frame, selections: [], objectCount: 0, scanFailed: true },
-    );
+    if (result.status !== "OK") {
+      setPointed({ frame, selections: [], labels: [], objectCount: 0, scanFailed: true });
+      return;
+    }
+
+    const selections = dwells.map((dwell) => resolveDwell(result.boxes, dwell));
+    // One identity check per object, even if it was pointed at more than once.
+    const targets: Box[] = [
+      ...new Set(selections.flatMap((selection) => (selection.status === "MATCH" ? [selection.box] : []))),
+    ];
+    const labelsFor = (identities: TargetIdentity[]) =>
+      selections.map((selection) =>
+        selection.status === "MATCH" ? (identities[targets.indexOf(selection.box)] ?? null) : null,
+      );
+
+    setPointed({
+      frame,
+      selections,
+      labels: labelsFor(targets.map((): TargetIdentity => ({ state: "pending" }))),
+      objectCount: result.boxes.length,
+      scanFailed: false,
+    });
+    if (targets.length === 0) return;
+
+    // Runs while the transcript is processed, so it adds little to the wait.
+    const identities = await identifyTargets(frame.url, targets, products ?? []);
+    if (id !== holdRef.current) return;
+    setPointed((current) => current && { ...current, labels: labelsFor(identities) });
   }
 
   return (

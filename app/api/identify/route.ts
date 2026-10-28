@@ -1,0 +1,63 @@
+import { isSameOrigin } from "@/lib/http/same-origin";
+import { identify } from "@/lib/identity/adapter";
+import type { ReferenceProduct } from "@/lib/identity/types";
+
+const JPEG_PREFIX = "data:image/jpeg;base64,";
+// Crops are at most 384 px and references 256 px on the long edge.
+const MAX_IMAGE_CHARS = 200_000;
+const MAX_TARGETS = 6;
+const MAX_PRODUCTS = 12;
+const MAX_NAME_LENGTH = 60;
+const SKU_PATTERN = /^[A-Z0-9-]{1,20}$/;
+
+function isImage(value: unknown): value is string {
+  return typeof value === "string" && value.startsWith(JPEG_PREFIX) && value.length <= MAX_IMAGE_CHARS;
+}
+
+function parseTargets(value: unknown): string[] | null {
+  return Array.isArray(value) && value.length > 0 && value.length <= MAX_TARGETS && value.every(isImage)
+    ? value
+    : null;
+}
+
+function parseProducts(value: unknown): ReferenceProduct[] | null {
+  if (!Array.isArray(value) || value.length > MAX_PRODUCTS) return null;
+
+  const seen = new Set<string>();
+  const products: ReferenceProduct[] = [];
+
+  for (const item of value) {
+    if (typeof item !== "object" || item === null) return null;
+    const { sku, name, image } = item as Record<string, unknown>;
+
+    if (typeof sku !== "string" || !SKU_PATTERN.test(sku) || seen.has(sku)) return null;
+    if (typeof name !== "string" || !name.trim() || name.length > MAX_NAME_LENGTH || !isImage(image)) return null;
+
+    seen.add(sku);
+    products.push({ sku, name: name.trim(), image });
+  }
+
+  return products;
+}
+
+export async function POST(request: Request) {
+  if (!isSameOrigin(request)) {
+    return Response.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  let fields: Record<string, unknown>;
+  try {
+    const body: unknown = await request.json();
+    fields = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+  } catch {
+    return Response.json({ error: "invalid json" }, { status: 400 });
+  }
+
+  const targets = parseTargets(fields.targets);
+  const products = parseProducts(fields.products);
+  if (!targets || !products) {
+    return Response.json({ error: "invalid request" }, { status: 400 });
+  }
+
+  return Response.json(await identify(targets, products));
+}
