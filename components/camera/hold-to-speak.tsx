@@ -4,6 +4,8 @@ import { useRef, useState } from "react";
 import { LoaderCircle, Mic } from "lucide-react";
 import { useProducts } from "@/lib/catalogue/store";
 import { useMessages } from "@/lib/i18n/locale";
+import { requestIntent } from "@/lib/intent/client";
+import type { IntentResult } from "@/lib/intent/types";
 import { useMic } from "@/lib/media/use-mic";
 import { requestTranscript } from "@/lib/voice/client";
 import { catalogueKeywords } from "@/lib/voice/keywords";
@@ -11,16 +13,22 @@ import { catalogueKeywords } from "@/lib/voice/keywords";
 type Heard =
   | { state: "idle" }
   | { state: "processing" }
-  | { state: "done"; transcript: string }
+  | { state: "done"; transcript: string; intent: IntentResult }
   | { state: "short" }
   | { state: "error" };
+
+const NO_ACTIONS: IntentResult = {
+  status: "OK",
+  intent: { actions: [], needsClarification: false },
+  latencyMs: 0,
+};
 
 export function HoldToSpeak() {
   const { status, level, start, stop } = useMic();
   const products = useProducts();
   const t = useMessages().point;
   const [heard, setHeard] = useState<Heard>({ state: "idle" });
-  // A new hold makes any transcript still in flight stale.
+  // A new hold makes any request still in flight stale.
   const requestRef = useRef(0);
 
   function press() {
@@ -38,10 +46,17 @@ export function HoldToSpeak() {
 
     const id = requestRef.current;
     setHeard({ state: "processing" });
-    const result = await requestTranscript(recording.wav, catalogueKeywords(products ?? []));
-    if (id !== requestRef.current) return;
 
-    setHeard(result.status === "OK" ? { state: "done", transcript: result.transcript } : { state: "error" });
+    const heardSpeech = await requestTranscript(recording.wav, catalogueKeywords(products ?? []));
+    if (id !== requestRef.current) return;
+    if (heardSpeech.status !== "OK") {
+      setHeard({ state: "error" });
+      return;
+    }
+
+    const intent = heardSpeech.transcript ? await requestIntent(heardSpeech.transcript) : NO_ACTIONS;
+    if (id !== requestRef.current) return;
+    setHeard({ state: "done", transcript: heardSpeech.transcript, intent });
   }
 
   function cancel() {
@@ -51,25 +66,57 @@ export function HoldToSpeak() {
 
   return (
     <div className="flex shrink-0 flex-col items-center gap-2">
-      <p
+      <div
         aria-live="polite"
-        className="flex min-h-10 max-w-full items-center justify-center gap-1.5 px-2 text-center text-sm"
+        className="flex min-h-10 w-full max-w-sm flex-col items-center justify-center gap-1.5 px-2 text-center text-sm"
       >
         {heard.state === "processing" && (
-          <>
+          <p className="flex items-center gap-1.5">
             <LoaderCircle aria-hidden size={16} className="shrink-0 animate-spin" />
             {t.voice.processing}
+          </p>
+        )}
+
+        {heard.state === "done" && (
+          <>
+            {heard.transcript ? (
+              <p className="line-clamp-2 font-medium">“{heard.transcript}”</p>
+            ) : (
+              <p className="text-muted">{t.voice.empty}</p>
+            )}
+
+            {heard.intent.status === "ERROR" ? (
+              <p className="text-danger">{t.voice.error}</p>
+            ) : heard.intent.intent.actions.length === 0 ? (
+              heard.transcript && <p className="text-muted">{t.intent.none}</p>
+            ) : (
+              <ol className="flex max-h-28 w-full flex-col gap-1 overflow-y-auto text-left">
+                {heard.intent.intent.actions.map((action, index) => (
+                  <li
+                    key={index}
+                    className="flex items-baseline gap-2 rounded-control border border-line bg-surface px-2 py-1"
+                  >
+                    <span data-qty className="shrink-0 font-semibold">
+                      {t.intent.actions[action.action]}{" "}
+                      {action.quantity ?? (action.action === "REMOVE" ? t.intent.all : "?")}
+                    </span>
+                    <span className="truncate text-muted">
+                      {t.intent.refs[action.reference]} · “{action.spoken}”
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+
+            {heard.intent.status === "OK" && heard.intent.intent.needsClarification && (
+              <p className="text-attention">{t.intent.unclear}</p>
+            )}
           </>
         )}
-        {heard.state === "done" &&
-          (heard.transcript ? (
-            <span className="line-clamp-2 font-medium">“{heard.transcript}”</span>
-          ) : (
-            <span className="text-muted">{t.voice.empty}</span>
-          ))}
-        {heard.state === "short" && <span className="text-muted">{t.voice.tooShort}</span>}
-        {heard.state === "error" && <span className="text-danger">{t.voice.error}</span>}
-      </p>
+
+        {heard.state === "short" && <p className="text-muted">{t.voice.tooShort}</p>}
+        {heard.state === "error" && <p className="text-danger">{t.voice.error}</p>}
+      </div>
 
       <button
         type="button"

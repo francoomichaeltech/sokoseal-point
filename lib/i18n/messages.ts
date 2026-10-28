@@ -117,6 +117,13 @@ const en = {
       tooShort: "Hold the button while you speak.",
       error: "Couldn't process that. Try again.",
     },
+    intent: {
+      actions: { ADD: "Add", REMOVE: "Remove", SET: "Set to" },
+      refs: { POINT: "pointed", SAME: "same product", NAMED: "by name" },
+      all: "all",
+      none: "No basket request heard.",
+      unclear: "Part of that was unclear.",
+    },
   },
 };
 
@@ -236,6 +243,13 @@ const sw: Messages = {
       empty: "Hakuna maneno yaliyosikika. Shikilia kitufe na uongee.",
       tooShort: "Shikilia kitufe wakati unaongea.",
       error: "Imeshindwa kuchakata. Jaribu tena.",
+    },
+    intent: {
+      actions: { ADD: "Ongeza", REMOVE: "Ondoa", SET: "Weka" },
+      refs: { POINT: "umeelekeza", SAME: "bidhaa ileile", NAMED: "kwa jina" },
+      all: "zote",
+      none: "Hakuna ombi la kikapu lililosikika.",
+      unclear: "Sehemu ya ombi haikueleweka.",
     },
   },
 };
