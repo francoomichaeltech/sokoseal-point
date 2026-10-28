@@ -29,12 +29,14 @@ Rules:
 - Greetings, questions and price questions (bei gani, how much) are not actions.
 - If the speech or the pointing is unclear, return only the actions you are sure of and set needs_clarification to true.
 - transcript is everything said, in the original language.
+- Return one action for every request the person makes. Never merge two requests or drop one.
 
 Reference examples. These show the patterns only; the clip decides.
 "Nipe hii mbili." -> ADD 2 POINT
 "Nataka hizi mbili, na ile moja." -> ADD 2 POINT; ADD 1 POINT
 "Nipe hii tano, hapana, ziwe tatu." -> ADD 3 POINT
 "Ondoa moja kwa hizi." -> REMOVE 1 POINT
+"Ondoa moja kwa hii, kisha ongeza tano." -> REMOVE 1 POINT; ADD 5 SAME
 "Naomba vikombe viwili na kalamu moja." -> ADD 2 NAMED "vikombe"; ADD 1 NAMED "kalamu"
 "Could I get two of this?" -> ADD 2 POINT
 "Two of these and one of that." -> ADD 2 POINT; ADD 1 POINT
@@ -101,7 +103,7 @@ try {
       },
     ],
     text: { format: { type: "json_schema", name: "shop_actions", schema: SCHEMA, strict: true } },
-    reasoning: { effort: "low" },
+        reasoning: { effort: process.env.REASONING_EFFORT ?? "low" },
   });
 
   console.log(`${path.basename(clipPath)} · transcript given: ${transcript ? "yes" : "no"}`);
