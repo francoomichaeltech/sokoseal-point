@@ -19,6 +19,7 @@ import { usePointingSession } from "@/lib/pointing/use-pointing-session";
 import { CameraView, type Pointed } from "./camera-view";
 import { HoldToSpeak } from "./hold-to-speak";
 import { OutcomeList, type HoldOutcome } from "./outcome-list";
+import { PointTips } from "./point-tips";
 
 // SAM missed most objects in frames with a hand, so the counter is scanned in the background
 // while no hand is in view and a hold uses that scan straight away.
@@ -171,8 +172,9 @@ export function PointSession() {
 
   return (
     <div className="mx-auto flex h-full max-w-md flex-col gap-4 p-4">
-      <div className="min-h-0 flex-1">
+      <div className="relative min-h-0 flex-1">
         <CameraView camera={camera} tracker={pointing.status} pointed={pointed} />
+        <PointTips />
       </div>
       <HoldToSpeak
         onHoldStart={handleHoldStart}

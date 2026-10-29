@@ -9,6 +9,7 @@ import type { Product } from "@/lib/catalogue/types";
 import { useMessages } from "@/lib/i18n/locale";
 import { currencyPrefix, parsePrice, priceToInput, type Currency } from "@/lib/money";
 import { ProductPhoto } from "./product-photo";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const MAX_PHOTOS = 5;
 const MAX_ALIASES = 10;
@@ -359,7 +360,7 @@ export function ProductForm({ product, currency: shopCurrency, onDone }: Product
                 ] as const
               ).map(({ key, label, Icon, capture }) => (
                 <li key={key} className="aspect-square">
-                  <label className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-control border-2 border-dashed border-line text-primary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-primary">
+                  <label className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-control border-2 border-dashed border-line text-primary has-focus-visible:outline-2 has-focus-visible:outline-primary">
                     <Icon aria-hidden size={20} />
                     <span className="px-1 text-center text-xs font-medium">{label}</span>
                     <input
@@ -413,41 +414,27 @@ export function ProductForm({ product, currency: shopCurrency, onDone }: Product
 
         {product && (
           <div className="border-t border-line pt-5">
-            {confirmDelete ? (
-              <div role="alertdialog" aria-labelledby="delete-confirm" className="rounded-card border border-danger/40 p-4">
-                <p id="delete-confirm" className="text-sm font-medium">
-                  {t.deleteConfirm}
-                </p>
-                <div className="mt-3 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    className="h-11 flex-1 rounded-card bg-danger font-semibold text-white"
-                  >
-                    {t.deleteYes}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDelete(false)}
-                    className="h-11 flex-1 rounded-card border border-line bg-surface font-semibold"
-                  >
-                    {t.cancel}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(true)}
-                className="flex h-11 w-full items-center justify-center gap-1.5 rounded-card text-sm font-semibold text-danger"
-              >
-                <Trash2 aria-hidden size={16} />
-                {t.delete}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="flex h-11 w-full items-center justify-center gap-1.5 rounded-card text-sm font-semibold text-danger"
+            >
+              <Trash2 aria-hidden size={16} />
+              {t.delete}
+            </button>
           </div>
         )}
       </form>
+      {product && confirmDelete && (
+        <ConfirmDialog
+          title={t.deleteTitle(product.name)}
+          body={t.deleteBody}
+          confirmLabel={t.deleteYes}
+          cancelLabel={t.cancel}
+          onConfirm={() => void handleDelete()}
+          onCancel={() => setConfirmDelete(false)}
+        />
+      )}
     </>
   );
 }

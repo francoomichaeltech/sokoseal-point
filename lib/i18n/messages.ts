@@ -50,7 +50,7 @@ const en = {
     activeHelp: "Inactive products can't be added to a basket.",
     photos: "Reference photos",
     photosHelp: (count: number, max: number): string =>
-      `${count} of ${max}. Add 3 from different angles.`,
+      `${count} of ${max}. Add 3 clear photos from different angles with the label visible.`,
     photoAlt: (index: number): string => `Reference photo ${index}`,
     addPhoto: "Add photo",
     takePhoto: "Take photo",
@@ -62,7 +62,8 @@ const en = {
     saveError: "The product could not be saved. Try again.",
     cancel: "Cancel",
     delete: "Delete product",
-    deleteConfirm: "Delete this product? This can't be undone.",
+    deleteTitle: (name: string): string => `Delete ${name}?`,
+    deleteBody: "The product and its photos will be removed. This can't be undone.",
     deleteYes: "Delete",
     notFound: "This product no longer exists.",
     errors: {
@@ -155,6 +156,16 @@ const en = {
         too_many: "More than 999 of one product.",
       },
     },
+    tips: {
+      open: "Tips",
+      title: "For the best results",
+      camera: "Keep the products in good light, with all of them in view.",
+      point: "Point at one product at a time and hold your finger still for a moment.",
+      speak: "Hold the button and speak clearly, at a normal pace.",
+      photos: "Give each product 3 clear photos with the label visible.",
+      honest: "SokoSeal only adds products it recognises. If it is not sure, it does not add them.",
+      ok: "Got it",
+    },
   },
 };
 
@@ -209,7 +220,8 @@ const sw: Messages = {
     active: "Inatumika",
     activeHelp: "Bidhaa iliyozimwa haiwezi kuongezwa kwenye kikapu.",
     photos: "Picha za marejeo",
-    photosHelp: (count, max) => `${count} kati ya ${max}. Ongeza 3 kutoka pembe tofauti.`,
+    photosHelp: (count, max) =>
+      `${count} kati ya ${max}. Ongeza picha 3 wazi kutoka pembe tofauti, lebo ikionekana.`,
     photoAlt: (index) => `Picha ya marejeo ${index}`,
     addPhoto: "Ongeza picha",
     takePhoto: "Piga picha",
@@ -221,7 +233,8 @@ const sw: Messages = {
     saveError: "Bidhaa haikuweza kuhifadhiwa. Jaribu tena.",
     cancel: "Ghairi",
     delete: "Futa bidhaa",
-    deleteConfirm: "Ufute bidhaa hii? Haiwezi kurudishwa.",
+    deleteTitle: (name) => `Ufute ${name}?`,
+    deleteBody: "Bidhaa hii na picha zake zitafutwa. Haiwezi kurudishwa.",
     deleteYes: "Futa",
     notFound: "Bidhaa hii haipo tena.",
     errors: {
@@ -312,6 +325,16 @@ const sw: Messages = {
         not_enough: "Kikapu kina chache kuliko hizo.",
         too_many: "Zaidi ya 999 kwa bidhaa moja.",
       },
+    },
+    tips: {
+      open: "Vidokezo",
+      title: "Kwa matokeo bora",
+      camera: "Weka bidhaa kwenye mwanga mzuri, na zote zionekane kwenye kamera.",
+      point: "Elekeza bidhaa moja baada ya nyingine, na utulize kidole kwa muda mfupi.",
+      speak: "Shikilia kitufe na uongee kwa uwazi, bila haraka.",
+      photos: "Kila bidhaa iwe na picha 3 wazi, lebo ikionekana.",
+      honest: "SokoSeal inaongeza tu bidhaa inazozitambua. Isipokuwa na uhakika, haiziongezi.",
+      ok: "Nimeelewa",
     },
   },
 };

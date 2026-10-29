@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Check, Pencil } from "lucide-react";
 import type { Product } from "@/lib/catalogue/types";
 import { useMessages } from "@/lib/i18n/locale";
@@ -8,13 +8,8 @@ import { formatMoney } from "@/lib/money";
 import { ProductPhoto } from "./product-photo";
 
 export function ProductCard({ product }: { product: Product }) {
+  const router = useRouter();
   const t = useMessages().products;
-
-  const editLinkProps = {
-    href: `/products/edit?id=${encodeURIComponent(product.id)}`,
-    className:
-      "mt-3 flex h-10 items-center justify-center gap-1.5 rounded-control border border-line text-sm font-medium",
-  };
 
   return (
     <li className="rounded-card border border-line bg-surface p-3 shadow-card">
@@ -40,10 +35,15 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
       </div>
 
-      <Link {...editLinkProps}>
+      <button
+        type="button"
+        // A new URL per press, so a kept-alive form always loads the saved values.
+        onClick={() => router.push(`/products/edit?id=${encodeURIComponent(product.id)}&s=${Date.now()}`)}
+        className="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-control border border-line text-sm font-medium"
+      >
         <Pencil aria-hidden size={16} />
         {t.edit}
-      </Link>
+      </button>
     </li>
   );
 }

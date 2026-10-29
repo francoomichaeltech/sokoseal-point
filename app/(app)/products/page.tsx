@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Package, Plus } from "lucide-react";
 import { ProductCard } from "@/components/products/product-card";
 import { useProducts } from "@/lib/catalogue/store";
@@ -8,6 +8,7 @@ import { useMessages } from "@/lib/i18n/locale";
 import { useShop } from "@/lib/shop/store";
 
 export default function ProductsPage() {
+  const router = useRouter();
   const products = useProducts();
   const shop = useShop();
   const t = useMessages().products;
@@ -15,10 +16,6 @@ export default function ProductsPage() {
   if (!products || !shop) return null;
 
   const activeCount = products.filter((product) => product.active).length;
-  const addLinkProps = {
-    href: "/products/new",
-    className: "flex h-10 shrink-0 items-center gap-1.5 rounded-card bg-primary px-4 text-sm font-semibold text-white",
-  };
 
   return (
     <>
@@ -27,10 +24,15 @@ export default function ProductsPage() {
           <h1 className="text-2xl font-bold">{t.title}</h1>
           <p className="text-sm text-muted">{t.summary(activeCount, shop.currency)}</p>
         </div>
-        <Link {...addLinkProps}>
+        <button
+          type="button"
+          // A new URL per press, so a kept-alive form never shows the previous product.
+          onClick={() => router.push(`/products/new?s=${Date.now()}`)}
+          className="flex h-10 shrink-0 items-center gap-1.5 rounded-card bg-primary px-4 text-sm font-semibold text-white"
+        >
           <Plus aria-hidden size={18} />
           {t.add}
-        </Link>
+        </button>
       </div>
 
       {products.length === 0 ? (

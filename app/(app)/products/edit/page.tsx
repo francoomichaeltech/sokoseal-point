@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ProductForm } from "@/components/products/product-form";
@@ -9,12 +9,13 @@ import { useMessages } from "@/lib/i18n/locale";
 import { useShop } from "@/lib/shop/store";
 
 function EditProduct() {
-  const id = useSearchParams().get("id");
+  const params = useSearchParams();
+  const id = params.get("id");
+  // Each "Edit" press opens a new ?s= value, so the form always shows the saved values.
+  const session = params.get("s") ?? "";
   const products = useProducts();
   const shop = useShop();
   const t = useMessages().productForm;
-  // Same reason as the new-product page: a fresh form on every visit.
-  const [version, setVersion] = useState(0);
 
   if (!products || !shop) return null;
 
@@ -33,14 +34,7 @@ function EditProduct() {
     );
   }
 
-  return (
-    <ProductForm
-      key={`${product.id}-${version}`}
-      product={product}
-      currency={shop.currency}
-      onDone={() => setVersion((value) => value + 1)}
-    />
-  );
+  return <ProductForm key={`${product.id}-${session}`} product={product} currency={shop.currency} />;
 }
 
 export default function EditProductPage() {
