@@ -2,14 +2,13 @@
 
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Camera, ImagePlus, Trash2, X } from "lucide-react";
+import { ArrowLeft, Camera, ImagePlus, X } from "lucide-react";
 import { deletePhotos, preparePhoto, savePhoto } from "@/lib/catalogue/photos";
-import { removeProduct, upsertProduct, useProducts } from "@/lib/catalogue/store";
+import { upsertProduct, useProducts } from "@/lib/catalogue/store";
 import type { Product } from "@/lib/catalogue/types";
 import { useMessages } from "@/lib/i18n/locale";
 import { currencyPrefix, parsePrice, priceToInput, type Currency } from "@/lib/money";
 import { ProductPhoto } from "./product-photo";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const MAX_PHOTOS = 5;
 const MAX_ALIASES = 10;
@@ -97,7 +96,6 @@ export function ProductForm({ product, currency: shopCurrency, onDone }: Product
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [photoError, setPhotoError] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const trimmedName = name.trim();
   const normalizedSku = sku.trim().toUpperCase();
@@ -172,13 +170,6 @@ export function ProductForm({ product, currency: shopCurrency, onDone }: Product
       setSaveError(true);
       setSaving(false);
     }
-  }
-
-  async function handleDelete() {
-    if (!product) return;
-    router.replace("/products");
-    await removeProduct(product.id);
-    onDone?.();
   }
 
   return (
@@ -412,29 +403,7 @@ export function ProductForm({ product, currency: shopCurrency, onDone }: Product
           </button>
         </div>
 
-        {product && (
-          <div className="border-t border-line pt-5">
-            <button
-              type="button"
-              onClick={() => setConfirmDelete(true)}
-              className="flex h-11 w-full items-center justify-center gap-1.5 rounded-card text-sm font-semibold text-danger"
-            >
-              <Trash2 aria-hidden size={16} />
-              {t.delete}
-            </button>
-          </div>
-        )}
       </form>
-      {product && confirmDelete && (
-        <ConfirmDialog
-          title={t.deleteTitle(product.name)}
-          body={t.deleteBody}
-          confirmLabel={t.deleteYes}
-          cancelLabel={t.cancel}
-          onConfirm={() => void handleDelete()}
-          onCancel={() => setConfirmDelete(false)}
-        />
-      )}
     </>
   );
 }

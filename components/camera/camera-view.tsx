@@ -31,15 +31,11 @@ type Chip = { text: string; tone: "neutral" | "busy" | "attention" };
 
 type Outline = { box: Box; numbers: number[]; label: TargetIdentity | null; ambiguous: boolean };
 
-// After a hold, says what pointing captured so a missing outline has a visible reason.
-function statusChip(tracker: TrackerStatus, pointed: Pointed | null, t: Messages["point"]): Chip {
+// Point stays quiet: tips explain how to point, and hold results are reviewed in the basket.
+function statusChip(tracker: TrackerStatus, t: Messages["point"]): Chip {
   if (tracker === "error") return { text: t.pointing.unsupported, tone: "attention" };
   if (tracker === "loading") return { text: t.pointing.loading, tone: "busy" };
-  if (!pointed) return { text: t.hint, tone: "neutral" };
-  if (pointed.scanFailed) return { text: t.ground.error, tone: "attention" };
-  if (pointed.selections.length === 0) return { text: t.pointing.noDwell, tone: "attention" };
-  if (pointed.objectCount === 0) return { text: t.pointing.noObjects, tone: "attention" };
-  return { text: t.pointing.summary(pointed.selections.length, pointed.objectCount), tone: "neutral" };
+  return { text: t.hint, tone: "neutral" };
 }
 
 // One outline per object, listing every pause that pointed at it.
@@ -88,7 +84,7 @@ export function CameraView({ camera, tracker, pointed }: CameraViewProps) {
   const [viewRef, view] = useElementSize<HTMLDivElement>();
   const t = useMessages().point;
   const live = status === "live";
-  const chip = statusChip(tracker, pointed, t);
+  const chip = statusChip(tracker, t);
 
   return (
     <div ref={viewRef} className="viewfinder h-full rounded-card">

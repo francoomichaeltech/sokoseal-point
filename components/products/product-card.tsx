@@ -1,13 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Check, Pencil } from "lucide-react";
+import { Check, Pencil, Trash2 } from "lucide-react";
 import type { Product } from "@/lib/catalogue/types";
 import { useMessages } from "@/lib/i18n/locale";
 import { formatMoney } from "@/lib/money";
 import { ProductPhoto } from "./product-photo";
 
-export function ProductCard({ product }: { product: Product }) {
+type ProductCardProps = {
+  product: Product;
+  onDelete: () => void;
+};
+
+export function ProductCard({ product, onDelete }: ProductCardProps) {
   const router = useRouter();
   const t = useMessages().products;
 
@@ -35,15 +40,25 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
       </div>
 
-      <button
-        type="button"
-        // A new URL per press, so a kept-alive form always loads the saved values.
-        onClick={() => router.push(`/products/edit?id=${encodeURIComponent(product.id)}&s=${Date.now()}`)}
-        className="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-control border border-line text-sm font-medium"
-      >
-        <Pencil aria-hidden size={16} />
-        {t.edit}
-      </button>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          // A new URL per press, so a kept-alive form always loads the saved values.
+          onClick={() => router.push(`/products/edit?id=${encodeURIComponent(product.id)}&s=${Date.now()}`)}
+          className="flex h-10 items-center justify-center gap-1.5 rounded-control border border-line text-sm font-medium"
+        >
+          <Pencil aria-hidden size={16} />
+          {t.edit}
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="flex h-10 items-center justify-center gap-1.5 rounded-control border border-line text-sm font-medium text-danger"
+        >
+          <Trash2 aria-hidden size={16} />
+          {t.delete}
+        </button>
+      </div>
     </li>
   );
 }
