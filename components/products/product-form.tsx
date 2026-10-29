@@ -4,7 +4,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Camera, ImagePlus, X } from "lucide-react";
 import { deletePhotos, preparePhoto, savePhoto } from "@/lib/catalogue/photos";
-import { suggestSku } from "@/lib/catalogue/sku";
+import { checkSku, normalizeSku, SKU_MAX_LENGTH } from "@/lib/catalogue/sku";
 import { upsertProduct, useProducts } from "@/lib/catalogue/store";
 import type { Product } from "@/lib/catalogue/types";
 import { useMessages } from "@/lib/i18n/locale";
@@ -13,7 +13,6 @@ import { ProductPhoto } from "./product-photo";
 
 const MAX_PHOTOS = 5;
 const NAME_MAX_LENGTH = 60;
-const SKU_PATTERN = /^[A-Z0-9-]{1,20}$/;
 
 // A draft with a blob was picked in this session and is not in IndexedDB yet.
 type PhotoDraft = { id: string; blob?: Blob };
@@ -29,31 +28,17 @@ function inputClass(invalid: boolean) {
   }`;
 }
 
-function Field({
-  id,
-  label,
-  error,
-  help,
-  children,
-}: {
-  id: string;
-  label: string;
-  error?: string | null;
-  help?: string;
-  children: ReactNode;
-}) {
+function Field({ id, label, error, children }: { id: string; label: string; error?: string | null; children: ReactNode }) {
   return (
     <div>
       <label htmlFor={id} className="text-sm font-semibold">
         {label}
       </label>
       {children}
-      {error ? (
+      {error && (
         <p id={`${id}-error`} className="mt-1.5 text-sm text-danger">
           {error}
         </p>
-      ) : (
-        help && <p className="mt-1.5 text-sm text-muted">{help}</p>
       )}
     </div>
   );
@@ -67,8 +52,7 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
   const currency = product?.currency ?? shopCurrency;
 
   const [name, setName] = useState(product?.name ?? "");
-  // null: a new product's SKU follows the name until the merchant types their own.
-  const [skuInput, setSkuInput] = useState<string | null>(product?.sku ?? null);
+  const [skuInput, setSkuInput] = useState(product?.sku ?? "");
   const [price, setPrice] = useState(product ? priceToInput(product.price, product.currency) : "");
   const [photos, setPhotos] = useState<PhotoDraft[]>(
     () => product?.referenceImages.map((id) => ({ id })) ?? [],
@@ -81,12 +65,20 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
 
   const otherSkus = products.filter((item) => item.id !== product?.id).map((item) => item.sku);
   const trimmedName = name.trim();
-  const sku = skuInput === null ? suggestSku(trimmedName, otherSkus) : skuInput.trim().toUpperCase();
+  const sku = normalizeSku(skuInput);
+  const skuProblem = checkSku(sku, otherSkus);
   const amount = parsePrice(price, currency);
 
   const errors = {
     name: trimmedName ? null : t.errors.name,
-    sku: !SKU_PATTERN.test(sku) ? t.errors.sku : otherSkus.includes(sku) ? t.errors.skuTaken : null,
+    sku:
+      skuProblem === "empty"
+        ? t.errors.sku
+        : skuProblem === "taken"
+          ? t.errors.skuTaken
+          : skuProblem === "reserved"
+            ? t.errors.skuReserved
+            : null,
     price: amount === null ? t.errors.price(currency) : null,
     photos: photos.length > 0 ? null : t.errors.photos,
   };
@@ -160,7 +152,8 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
         <h1 className="text-xl font-bold">{product ? t.editTitle : t.addTitle}</h1>
       </div>
 
-      <form onSubmit={handleSubmit} noValidate className="mt-4 flex flex-col gap-5">
+      {/* Bottom padding keeps the last field clear of the fixed save bar. */}
+      <form onSubmit={handleSubmit} noValidate className="mt-4 flex flex-col gap-5 pb-20">
         <Field id="product-name" label={t.name} error={visibleError(errors.name)}>
           <input
             id="product-name"
@@ -173,13 +166,13 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
           />
         </Field>
 
-        <Field id="product-sku" label={t.sku} error={visibleError(errors.sku)} help={t.skuHelp}>
+        <Field id="product-sku" label={t.sku} error={visibleError(errors.sku)}>
           <input
             id="product-sku"
-            value={skuInput ?? sku}
-            onChange={(event) => setSkuInput(event.target.value.toUpperCase())}
-            maxLength={20}
-            autoCapitalize="characters"
+            value={skuInput}
+            onChange={(event) => setSkuInput(event.target.value)}
+            maxLength={SKU_MAX_LENGTH}
+            autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
             placeholder={t.skuPlaceholder}
@@ -188,7 +181,7 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
           />
         </Field>
 
-        <Field id="product-price" label={t.price} error={visibleError(errors.price)} help={t.priceHelp(currency)}>
+        <Field id="product-price" label={t.price} error={visibleError(errors.price)}>
           <div
             className={`mt-2 flex h-12 items-center overflow-hidden rounded-control border bg-surface focus-within:border-primary ${
               visibleError(errors.price) ? "border-danger" : "border-line"
@@ -214,11 +207,7 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
           <ul className="mt-2 grid grid-cols-3 gap-2">
             {photos.map((photo, index) => (
               <li key={photo.id} className="relative aspect-square">
-                <ProductPhoto
-                  source={photo.blob ?? photo.id}
-                  alt={t.photoAlt(index + 1)}
-                  className="h-full w-full"
-                />
+                <ProductPhoto source={photo.blob ?? photo.id} alt={t.photoAlt(index + 1)} className="h-full w-full" />
                 <button
                   type="button"
                   aria-label={t.removePhoto}
@@ -273,15 +262,26 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
           </p>
         )}
 
-        {/* Stays above the bottom nav while the form scrolls. */}
-        <div className="form-actions sticky bottom-[calc(var(--nav-height)+env(safe-area-inset-bottom))] -mx-4 border-t border-line bg-canvas px-4 py-3">
-          <button
-            type="submit"
-            disabled={saving}
-            className="h-12 w-full rounded-card bg-primary font-semibold text-white disabled:opacity-60"
-          >
-            {saving ? t.saving : t.save}
-          </button>
+        {/* Fixed above the bottom nav, so it never moves with the form. */}
+        <div className="form-actions fixed inset-x-0 bottom-[calc(var(--nav-height)+env(safe-area-inset-bottom))] z-10 border-t border-line bg-canvas">
+          <div className="mx-auto flex max-w-md gap-3 px-4 py-3">
+            {product && (
+              <button
+                type="button"
+                onClick={() => router.push("/products")}
+                className="h-12 flex-1 rounded-card border border-line bg-surface font-semibold"
+              >
+                {t.cancel}
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={saving}
+              className="h-12 flex-1 rounded-card bg-primary font-semibold text-white disabled:opacity-60"
+            >
+              {saving ? t.saving : t.save}
+            </button>
+          </div>
         </div>
       </form>
     </>

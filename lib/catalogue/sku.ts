@@ -1,17 +1,22 @@
-const PREFIX_LENGTH = 3;
-const FALLBACK = "ITEM";
+export const SKU_MAX_LENGTH = 30;
 
-// A short readable code from the product name: its first letters plus the lowest free number (Mug -> MUG1).
-export function suggestSku(name: string, taken: string[]): string {
-  const letters = name
-    .normalize("NFKD")
-    .replace(/[^A-Za-z0-9]/g, "")
-    .toUpperCase()
-    .slice(0, PREFIX_LENGTH);
-  const prefix = letters || FALLBACK;
-  const used = new Set(taken);
+// Identity uses these words for "no match"; a SKU equal to one would be ambiguous.
+const RESERVED = new Set(["unknown", "ambiguous"]);
 
-  let number = 1;
-  while (used.has(`${prefix}${number}`)) number += 1;
-  return `${prefix}${number}`;
+export type SkuProblem = "empty" | "reserved" | "taken";
+
+// Merchants may use any code. Only spacing is normalized; case is kept as typed.
+export function normalizeSku(input: string): string {
+  return input.trim().replace(/\s+/g, " ").slice(0, SKU_MAX_LENGTH);
+}
+
+export function isReservedSku(sku: string): boolean {
+  return RESERVED.has(sku.toLowerCase());
+}
+
+export function checkSku(sku: string, otherSkus: string[]): SkuProblem | null {
+  if (!sku) return "empty";
+  if (isReservedSku(sku)) return "reserved";
+  const wanted = sku.toLowerCase();
+  return otherSkus.some((other) => other.toLowerCase() === wanted) ? "taken" : null;
 }

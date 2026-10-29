@@ -51,8 +51,7 @@ const en = {
     active: "Active",
     activeHelp: "Inactive products can't be added to a basket.",
     photos: "Reference photos",
-    photosHelp: (count: number, max: number): string =>
-      `${count} of ${max}. Add 3 clear photos from different angles with the label visible.`,
+    photosHelp: (count: number, max: number): string => `${count}/${max} · clear photos, label visible`,
     photoAlt: (index: number): string => `Reference photo ${index}`,
     addPhoto: "Add photo",
     takePhoto: "Take photo",
@@ -70,8 +69,9 @@ const en = {
     notFound: "This product no longer exists.",
     errors: {
       name: "Enter a name.",
-      sku: "Use 1–20 letters, numbers or dashes.",
-      skuTaken: "Another product already uses this SKU.",
+      sku: "Enter a SKU.",
+      skuTaken: "Another product uses this SKU.",
+      skuReserved: "Use a different SKU.",
       // Explicit return type: otherwise the literal strings become the Messages type.
       price: (currency: string): string =>
         currency === "TZS"
@@ -224,8 +224,7 @@ const sw: Messages = {
     active: "Inatumika",
     activeHelp: "Bidhaa iliyozimwa haiwezi kuongezwa kwenye kikapu.",
     photos: "Picha za marejeo",
-    photosHelp: (count, max) =>
-      `${count} kati ya ${max}. Ongeza picha 3 wazi kutoka pembe tofauti, lebo ikionekana.`,
+    photosHelp: (count, max) => `${count}/${max} · picha wazi, lebo ionekane`,
     photoAlt: (index) => `Picha ya marejeo ${index}`,
     addPhoto: "Ongeza picha",
     takePhoto: "Piga picha",
@@ -243,8 +242,9 @@ const sw: Messages = {
     notFound: "Bidhaa hii haipo tena.",
     errors: {
       name: "Weka jina.",
-      sku: "Tumia herufi, namba au vistari 1–20.",
-      skuTaken: "Bidhaa nyingine tayari inatumia SKU hii.",
+      sku: "Weka SKU.",
+      skuTaken: "Bidhaa nyingine inatumia SKU hii.",
+      skuReserved: "Tumia SKU nyingine.",
       price: (currency) =>
         currency === "TZS"
           ? "Weka kiasi kamili zaidi ya sifuri."

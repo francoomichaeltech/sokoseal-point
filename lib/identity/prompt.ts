@@ -24,7 +24,7 @@ export function identityContent(targets: string[], products: ReferenceProduct[])
     const hint = product.hint ? ` ${JSON.stringify(product.hint)}` : "";
     for (const image of product.images) {
       images.push(image);
-      lines.push(`Image ${images.length}: reference ${product.sku} ${JSON.stringify(product.name)}${hint}`);
+      lines.push(`Image ${images.length}: reference ${JSON.stringify(product.sku)} ${JSON.stringify(product.name)}${hint}`);
     }
   }
   targets.forEach((image, index) => {

@@ -1,4 +1,5 @@
 import { isSameOrigin } from "@/lib/http/same-origin";
+import { isReservedSku } from "@/lib/catalogue/sku";
 import { identify } from "@/lib/identity/adapter";
 import type { ReferenceProduct } from "@/lib/identity/types";
 
@@ -10,7 +11,7 @@ const MAX_PRODUCTS = 10;
 const MAX_IMAGES_PER_PRODUCT = 3;
 const MAX_NAME_LENGTH = 60;
 const MAX_HINT_LENGTH = 120;
-const SKU_PATTERN = /^[A-Z0-9-]{1,20}$/;
+const MAX_SKU_LENGTH = 30;
 
 function isImage(value: unknown): value is string {
   return typeof value === "string" && value.startsWith(JPEG_PREFIX) && value.length <= MAX_IMAGE_CHARS;
@@ -32,7 +33,15 @@ function parseProducts(value: unknown): ReferenceProduct[] | null {
     if (typeof item !== "object" || item === null) return null;
     const { sku, name, hint, images } = item as Record<string, unknown>;
 
-    if (typeof sku !== "string" || !SKU_PATTERN.test(sku) || seen.has(sku)) return null;
+    if (
+      typeof sku !== "string" ||
+      !sku.trim() ||
+      sku.length > MAX_SKU_LENGTH ||
+      isReservedSku(sku) ||
+      seen.has(sku)
+    ) {
+      return null;
+    }
     if (typeof name !== "string" || !name.trim() || name.length > MAX_NAME_LENGTH) return null;
     if (hint !== undefined && (typeof hint !== "string" || hint.length > MAX_HINT_LENGTH)) return null;
 
