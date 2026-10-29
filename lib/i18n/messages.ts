@@ -95,6 +95,7 @@ const en = {
       counted: (count: number): string => (count === 1 ? "1 product pointed" : `${count} products pointed`),
       noDwell: "No pointing seen. Keep your hand in view and pause your finger on each product.",
       noObjects: "No products seen on the counter. Press the mic with your hand out of view.",
+      tapFallback: "Tap each product on the screen while you speak.",
       summary: (pointed: number, found: number): string => `${pointed} pointed · ${found} on the counter`,
     },
     ground: {
@@ -168,6 +169,17 @@ const en = {
       honest: "SokoSeal only adds products it recognises. If it is not sure, it does not add them.",
       ok: "Got it",
     },
+  },
+  basket: {
+    title: "Basket",
+    newRequest: "New request",
+    processing: "Processing your request…",
+    error: "Couldn't process that request. Try again.",
+    add: "Add to basket",
+    discard: "Discard",
+    pointAgain: "Point again",
+    empty: "Your basket is empty.",
+    total: "Total",
   },
 };
 
@@ -267,6 +279,7 @@ const sw: Messages = {
       counted: (count) => `Umeelekeza: ${count}`,
       noDwell: "Sikuona ukielekeza. Weka mkono ndani ya kamera na utulize kidole kwenye kila bidhaa.",
       noObjects: "Sikuona bidhaa kaunta. Bonyeza mic mkono ukiwa nje ya picha.",
+      tapFallback: "Gusa kila bidhaa kwenye skrini huku ukiongea.",
       summary: (pointed, found) => `Umeelekeza: ${pointed} · Vitu kaunta: ${found}`,
     },
     ground: {
@@ -340,6 +353,17 @@ const sw: Messages = {
       honest: "SokoSeal inaongeza tu bidhaa inazozitambua. Isipokuwa na uhakika, haiziongezi.",
       ok: "Nimeelewa",
     },
+  },
+  basket: {
+    title: "Kikapu",
+    newRequest: "Ombi jipya",
+    processing: "Inachakata ombi lako…",
+    error: "Imeshindwa kuchakata ombi. Jaribu tena.",
+    add: "Ongeza kwenye kikapu",
+    discard: "Futa ombi",
+    pointAgain: "Elekeza tena",
+    empty: "Kikapu ni tupu.",
+    total: "Jumla",
   },
 };
 

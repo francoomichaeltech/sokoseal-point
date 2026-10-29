@@ -1,135 +1,51 @@
 "use client";
 
-import { Camera, LoaderCircle, TriangleAlert } from "lucide-react";
-import type { Box, Selection } from "@/lib/grounding/types";
-import type { TargetIdentity } from "@/lib/identity/types";
+import type { PointerEvent } from "react";
+import { Camera, Hand, LoaderCircle } from "lucide-react";
+import type { Point } from "@/lib/grounding/types";
 import { useMessages } from "@/lib/i18n/locale";
-import type { Messages } from "@/lib/i18n/messages";
 import type { useCamera } from "@/lib/media/use-camera";
 import type { TrackerStatus } from "@/lib/pointing/use-pointing-session";
-import { boxToView } from "@/lib/pointing/viewport";
-import { useElementSize } from "@/lib/use-element-size";
-
-export type Pointed = {
-  frame: { width: number; height: number };
-  /** One entry per finger pause, in the order they happened. */
-  selections: Selection[];
-  /** Identity of the object behind each MATCH selection; null for other selections. */
-  labels: (TargetIdentity | null)[];
-  /** Objects SAM found on the counter. */
-  objectCount: number;
-  scanFailed: boolean;
-};
+import { viewToFrame } from "@/lib/pointing/viewport";
 
 type CameraViewProps = {
   camera: ReturnType<typeof useCamera>;
   tracker: TrackerStatus;
-  pointed: Pointed | null;
+  /** Used only when hand tracking failed: a tap marks the pointed product. */
+  onTap: (point: Point) => void;
 };
 
-type Chip = { text: string; tone: "neutral" | "busy" | "attention" };
-
-type Outline = { box: Box; numbers: number[]; label: TargetIdentity | null; ambiguous: boolean };
-
-// Point stays quiet: no loading or diagnostic text. Only a tracking failure is shown.
-function statusChip(tracker: TrackerStatus, t: Messages["point"]): Chip {
-  if (tracker === "error") return { text: t.pointing.unsupported, tone: "attention" };
-  return { text: t.hint, tone: "neutral" };
-}
-
-// One outline per object, listing every pause that pointed at it.
-function outlines(pointed: Pointed): Outline[] {
-  const byBox = new Map<Box, Outline>();
-
-  pointed.selections.forEach((selection, index) => {
-    const boxes =
-      selection.status === "MATCH" ? [selection.box] : selection.status === "AMBIGUOUS" ? selection.boxes : [];
-
-    for (const box of boxes) {
-      const existing = byBox.get(box);
-      if (existing) {
-        existing.numbers.push(index + 1);
-        continue;
-      }
-      byBox.set(box, {
-        box,
-        numbers: [index + 1],
-        label: selection.status === "MATCH" ? (pointed.labels[index] ?? null) : null,
-        ambiguous: selection.status === "AMBIGUOUS",
-      });
-    }
-  });
-
-  return [...byBox.values()];
-}
-
-function labelText(label: TargetIdentity, t: Messages["point"]): string {
-  switch (label.state) {
-    case "pending":
-      return t.identity.checking;
-    case "product":
-      return label.name;
-    case "unknown":
-      return t.identity.unknown;
-    case "ambiguous":
-      return t.identity.ambiguous;
-    default:
-      return t.identity.error;
-  }
-}
-
-export function CameraView({ camera, tracker, pointed }: CameraViewProps) {
+export function CameraView({ camera, tracker, onTap }: CameraViewProps) {
   const { videoRef, status, start } = camera;
-  const [viewRef, view] = useElementSize<HTMLDivElement>();
   const t = useMessages().point;
   const live = status === "live";
-  const chip = statusChip(tracker, t);
+  const tapMode = live && tracker === "error";
+
+  function handleTap(event: PointerEvent<HTMLDivElement>) {
+    const video = videoRef.current;
+    if (!tapMode || !video?.videoWidth) return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const point = viewToFrame(
+      event.clientX - rect.left,
+      event.clientY - rect.top,
+      { width: rect.width, height: rect.height },
+      { width: video.videoWidth, height: video.videoHeight },
+    );
+    if (point) onTap(point);
+  }
 
   return (
-    <div ref={viewRef} className="viewfinder h-full rounded-card">
+    <div onPointerDown={handleTap} className="viewfinder h-full rounded-card">
       <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
-
-      {live && pointed && (
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          {outlines(pointed).map((outline, index) => {
-            const verified =
-              !outline.ambiguous &&
-              (outline.label === null || outline.label.state === "pending" || outline.label.state === "product");
-
-            return (
-              <div
-                key={index}
-                className={`absolute rounded-lg ${
-                  verified
-                    ? "border-[3px] border-primary shadow-[0_0_0_1px_rgb(255_255_255/0.8)]"
-                    : "border-2 border-dashed border-attention"
-                }`}
-                style={boxToView(outline.box, view, pointed.frame)}
-              >
-                <span
-                  className={`absolute -top-3 -left-3 flex h-6 max-w-44 min-w-6 items-center justify-center gap-1 rounded-full px-2 text-xs font-semibold whitespace-nowrap text-white ${
-                    verified ? "bg-primary" : "bg-attention"
-                  }`}
-                >
-                  {outline.numbers.join(", ")}
-                  {outline.label && <span className="truncate font-medium">· {labelText(outline.label, t)}</span>}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       {live ? (
         <p
           role="status"
-          className={`pointer-events-none absolute inset-x-0 bottom-3 mx-auto flex w-fit max-w-[90%] items-center gap-1.5 rounded-full px-3 py-1.5 text-center text-sm text-white ${
-            chip.tone === "attention" ? "bg-attention" : "bg-ink/70"
-          }`}
+          className="pointer-events-none absolute inset-x-0 bottom-3 mx-auto flex w-fit max-w-[90%] items-center gap-1.5 rounded-full bg-ink/70 px-3 py-1.5 text-center text-sm text-white"
         >
-          {chip.tone === "busy" && <LoaderCircle aria-hidden size={16} className="shrink-0 animate-spin" />}
-          {chip.tone === "attention" && <TriangleAlert aria-hidden size={16} className="shrink-0" />}
-          {chip.text}
+          {tapMode && <Hand aria-hidden size={16} className="shrink-0" />}
+          {tapMode ? t.pointing.tapFallback : t.hint}
         </p>
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-ink p-6 text-center text-white">
