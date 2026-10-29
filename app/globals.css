@@ -114,3 +114,8 @@
 body:has(:is(input:not([type="file"]), textarea):focus) .bottom-nav {
   display: none;
 }
+
+/* With the keyboard open the nav is hidden, so the form's save bar drops to the bottom edge. */
+body:has(:is(input:not([type="file"]), textarea):focus) .form-actions {
+  bottom: 0;
+}
