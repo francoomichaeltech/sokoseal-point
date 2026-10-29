@@ -207,9 +207,16 @@ const en = {
     original: "What was asked",
     edits: "Your changes",
     noEdits: "No changes.",
+    changeAdded: (amount: number): string => `added ${amount}`,
+    changeReduced: (amount: number): string => `reduced by ${amount}`,
+    changeRemoved: "removed",
     decrease: (name: string): string => `One less ${name}`,
     increase: (name: string): string => `One more ${name}`,
     remove: (name: string): string => `Remove ${name}`,
+    removeTitle: (name: string): string => `Remove ${name}?`,
+    removeBody: "It will be removed from the basket and noted in the proof.",
+    removeLastBody: "This is the last item. The basket and its proof will be cleared.",
+    removeYes: "Remove",
   },
 };
 
@@ -420,9 +427,16 @@ const sw: Messages = {
     original: "Ulichoomba",
     edits: "Marekebisho yako",
     noEdits: "Hakuna marekebisho.",
+    changeAdded: (amount) => `imeongezwa ${amount}`,
+    changeReduced: (amount) => `imepunguzwa ${amount}`,
+    changeRemoved: "imeondolewa",
     decrease: (name) => `Punguza ${name}`,
     increase: (name) => `Ongeza ${name}`,
     remove: (name) => `Ondoa ${name}`,
+    removeTitle: (name) => `Ondoa ${name}?`,
+    removeBody: "Itaondolewa kwenye kikapu na kuandikwa kwenye Proof.",
+    removeLastBody: "Hii ndiyo bidhaa ya mwisho. Kikapu na Proof yake vitafutwa.",
+    removeYes: "Ondoa",
   },
 };
 

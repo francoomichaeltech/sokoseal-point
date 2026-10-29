@@ -6,9 +6,14 @@ import type { BasketLine } from "@/lib/commerce/types";
 import { useMessages } from "@/lib/i18n/locale";
 import { formatMoney } from "@/lib/money";
 
-type BasketLinesProps = { lines: BasketLine[]; readOnly?: boolean };
+type BasketLinesProps = {
+  lines: BasketLine[];
+  readOnly?: boolean;
+  /** Asks before removing; called for the bin and for minus on the last unit. */
+  onRemove?: (line: BasketLine) => void;
+};
 
-export function BasketLines({ lines, readOnly = false }: BasketLinesProps) {
+export function BasketLines({ lines, readOnly = false, onRemove }: BasketLinesProps) {
   const t = useMessages().basket;
   const currency = lines[0]?.currency;
   const total = lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
@@ -36,7 +41,7 @@ export function BasketLines({ lines, readOnly = false }: BasketLinesProps) {
                   <button
                     type="button"
                     aria-label={t.decrease(line.name)}
-                    onClick={() => setLineQuantity(line.sku, line.quantity - 1)}
+                    onClick={() => (line.quantity <= 1 ? onRemove?.(line) : setLineQuantity(line.sku, line.quantity - 1))}
                     className={stepButton}
                   >
                     <Minus aria-hidden size={16} />
@@ -56,7 +61,7 @@ export function BasketLines({ lines, readOnly = false }: BasketLinesProps) {
                 <button
                   type="button"
                   aria-label={t.remove(line.name)}
-                  onClick={() => setLineQuantity(line.sku, 0)}
+                  onClick={() => onRemove?.(line)}
                   className={`${stepButton} text-danger`}
                 >
                   <Trash2 aria-hidden size={16} />

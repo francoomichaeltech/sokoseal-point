@@ -119,3 +119,21 @@ export function sealBasket() {
 export function startNewBasket() {
   basketStore.set({ ...EMPTY, appliedEvents: basketStore.get().appliedEvents });
 }
+
+/**
+ * Removes a line after the user confirmed it. Removing the last line clears the basket and its proof,
+ * since nothing is left to review. Returns true when the basket is now empty.
+ */
+export function removeLine(sku: string): boolean {
+  const basket = basketStore.get();
+
+  if (basket.sealedAt !== null || !basket.lines.some((line) => line.sku === sku)) return false;
+
+  if (basket.lines.length === 1) {
+    basketStore.set({ ...EMPTY, appliedEvents: basket.appliedEvents });
+    return true;
+  }
+
+  setLineQuantity(sku, 0);
+  return false;
+}

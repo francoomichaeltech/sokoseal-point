@@ -10,7 +10,8 @@ import { RequestCard } from "@/components/basket/request-card";
 import { SealedView } from "@/components/basket/sealed-view";
 import { BasketSteps } from "@/components/basket/steps";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { sealBasket, useBasket } from "@/lib/commerce/store";
+import { removeLine, sealBasket, useBasket } from "@/lib/commerce/store";
+import type { BasketLine } from "@/lib/commerce/types";
 import { useMessages } from "@/lib/i18n/locale";
 import { formatMoney } from "@/lib/money";
 import { useRequest } from "@/lib/requests/store";
@@ -21,6 +22,7 @@ export default function BasketPage() {
   const request = useRequest();
   const t = useMessages().basket;
   const [sealing, setSealing] = useState(false);
+  const [removing, setRemoving] = useState<BasketLine | null>(null);
 
   if (!basket) return null;
   if (basket.sealedAt !== null) return <SealedView basket={basket} />;
@@ -30,6 +32,14 @@ export default function BasketPage() {
   const items = lines.reduce((sum, line) => sum + line.quantity, 0);
   const total = lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
   const totalText = hasLines ? formatMoney(total, lines[0].currency) : "";
+
+  function confirmRemove() {
+    if (!removing) return;
+    const emptied = removeLine(removing.sku);
+    setRemoving(null);
+    // Nothing left to review: back to pointing, unless a new request is still waiting here.
+    if (emptied && !request) router.push("/point");
+  }
 
   return (
     <div className="flex flex-col gap-4 pb-20">
@@ -41,7 +51,7 @@ export default function BasketPage() {
       {request && <RequestCard key={request.eventId} />}
 
       {hasLines ? (
-        <BasketLines lines={lines} />
+        <BasketLines lines={lines} onRemove={setRemoving} />
       ) : (
         !request && (
           <div className="mt-8 flex flex-col items-center text-center">
@@ -92,6 +102,17 @@ export default function BasketPage() {
             setSealing(false);
           }}
           onCancel={() => setSealing(false)}
+        />
+      )}
+
+      {removing && (
+        <ConfirmDialog
+          title={t.removeTitle(removing.name)}
+          body={lines.length === 1 ? t.removeLastBody : t.removeBody}
+          confirmLabel={t.removeYes}
+          cancelLabel={t.cancel}
+          onConfirm={confirmRemove}
+          onCancel={() => setRemoving(null)}
         />
       )}
     </div>

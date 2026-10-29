@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, ChevronDown, X } from "lucide-react";
+import { describeChange } from "@/lib/commerce/changes";
 import type { ProofEntry } from "@/lib/commerce/types";
 import { useLocale, useMessages } from "@/lib/i18n/locale";
 
@@ -67,11 +68,28 @@ export function ProofPanel({ proof }: { proof: ProofEntry[] }) {
             <p className="mt-2 text-muted">{t.noEdits}</p>
           ) : (
             <ul className="mt-2 space-y-1">
-              {edits.map((entry, index) => (
-                <li key={index}>
-                  <span className="text-xs text-muted">{time(entry.at)}</span> · {entry.name}: {entry.from} → {entry.to}
-                </li>
-              ))}
+              {edits.map((entry, index) => {
+                const change = describeChange(entry.from, entry.to);
+
+                const label =
+                  change.kind === "added"
+                    ? t.changeAdded(change.amount)
+                    : change.kind === "reduced"
+                      ? t.changeReduced(change.amount)
+                      : t.changeRemoved;
+
+                return (
+                  <li key={index} className="flex flex-wrap items-baseline gap-x-1.5">
+                    <span className="text-xs text-muted">{time(entry.at)}</span>
+                    <span>
+                      · {entry.name}: {entry.from} → {entry.to}
+                    </span>
+                    <span className={`text-xs font-semibold ${change.kind === "added" ? "text-verified" : "text-danger"}`}>
+                      {label}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

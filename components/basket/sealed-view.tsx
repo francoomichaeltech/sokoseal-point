@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CircleCheck } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -13,6 +14,7 @@ import { ProofPanel } from "./proof-panel";
 import { BasketSteps } from "./steps";
 
 export function SealedView({ basket }: { basket: Basket }) {
+  const router = useRouter();
   const t = useMessages().basket;
   const locale = useLocale();
   const [confirming, setConfirming] = useState(false);
@@ -57,6 +59,7 @@ export function SealedView({ basket }: { basket: Basket }) {
             startNewBasket();
             clearRequest();
             setConfirming(false);
+            router.push("/point");
           }}
           onCancel={() => setConfirming(false)}
         />
