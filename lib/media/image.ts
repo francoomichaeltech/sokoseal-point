@@ -2,8 +2,8 @@ import type { Box } from "@/lib/grounding/types";
 
 type Region = { x: number; y: number; width: number; height: number };
 
-// Margin around the box so the whole product is in the crop even when the box is tight.
-const CROP_PADDING = 0.1;
+// Generous margin so the whole product, label included, is in the crop even when the box is tight.
+const CROP_PADDING = 0.25;
 
 /** Draws a region of an image into a JPEG data URL whose long edge is at most maxEdge. */
 export function drawToJpeg(source: CanvasImageSource, region: Region, maxEdge: number, quality = 0.85): string | null {

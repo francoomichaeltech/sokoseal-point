@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import type { PointedTarget } from "@/lib/commerce/types";
 import type { IntentAction } from "@/lib/intent/types";
+import type { Evidence } from "@/lib/pointing/locate";
 
 /** The latest hold, waiting for the user to review it in the basket. */
 export type HoldRequest =
@@ -18,6 +19,9 @@ export type HoldRequest =
       targets: PointedTarget[];
       pointed: number;
       objectCount: number;
+      /** False when the camera never saw a hand during the hold. */
+      handSeen: boolean;
+      evidence: Evidence | null;
     };
 
 // Kept in memory: a request is reviewed right after the hold and is not worth restoring after a reload.

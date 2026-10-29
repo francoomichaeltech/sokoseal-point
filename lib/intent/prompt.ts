@@ -27,9 +27,9 @@ Reference examples (patterns only; the transcript and the pointing count decide)
 
 function pointingNote(count: number): string {
   if (count === 0) {
-    return "Pointing count: 0. The person did not pause on any product, so use POINT only for words that clearly refer to a pointed product.";
+    return "Pointing count: 0. The camera did not see the person point at a product. Still use POINT for requests that name no product, and SAME only for words that clearly refer back to the previous request's product.";
   }
-  return `Pointing count: ${count}. The person paused their finger on a product ${count} time(s) while speaking, in order. Each pause usually belongs to one request. A request with no product word said while pointing is POINT; a follow-on with no new pause is SAME. Never add, drop or change requests to make the numbers match.`;
+  return `Pointing count: ${count}. The person pointed at products ${count} time(s) while speaking, in order. Each pointing usually belongs to one request. A request that names no product is POINT. Use SAME only for words that clearly refer back to the previous request's product (hiyo, hizo, it, make that, kisha ongeza) without a new pointing. Never add, drop or change requests to make the numbers match.`;
 }
 
 // Product names and the transcript are JSON-quoted so their contents cannot break out of the prompt.

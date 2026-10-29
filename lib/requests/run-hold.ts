@@ -6,23 +6,26 @@ import { setRequest, updateRequest } from "./store";
 type HoldInput = {
   eventId: string;
   wav: Blob;
-  keywords: string[];
-  pauses: number;
+  /** Recognition hints for Muse Voice: shop words and product names. */
+  voiceHints: string[];
+  /** Product names and aliases, given to the request parser. */
+  productNames: string[];
   located: Promise<Located>;
 };
 
 // Runs outside React so it keeps going after Point navigates to the basket.
-export async function runHold({ eventId, wav, keywords, pauses, located }: HoldInput) {
+export async function runHold({ eventId, wav, voiceHints, productNames, located }: HoldInput) {
   setRequest({ eventId, phase: "processing" });
   const fail = () => updateRequest(eventId, { eventId, phase: "error" });
 
-  const speech = await requestTranscript(wav, keywords);
+  // Pointing is resolved while the speech is transcribed, so the parser gets the real pointing count.
+  const [speech, place] = await Promise.all([requestTranscript(wav, voiceHints), located]);
   if (speech.status !== "OK") return fail();
 
-  const intent = speech.transcript ? await requestIntent(speech.transcript, keywords, pauses) : null;
+  const pointed = place.targets.length;
+  const intent = speech.transcript ? await requestIntent(speech.transcript, productNames, pointed) : null;
   if (intent && intent.status !== "OK") return fail();
 
-  const { targets, objectCount } = await located;
   updateRequest(eventId, {
     eventId,
     phase: "ready",
@@ -30,8 +33,10 @@ export async function runHold({ eventId, wav, keywords, pauses, located }: HoldI
     transcript: intent?.intent.transcript || speech.transcript,
     actions: intent?.intent.actions ?? [],
     needsClarification: intent?.intent.needsClarification ?? false,
-    targets,
-    pointed: pauses,
-    objectCount,
+    targets: place.targets,
+    pointed,
+    objectCount: place.objectCount,
+    handSeen: place.handSeen,
+    evidence: place.evidence,
   });
 }

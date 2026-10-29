@@ -96,6 +96,8 @@ const en = {
       noDwell: "No pointing seen. Keep your hand in view and pause your finger on each product.",
       noObjects: "No products seen on the counter. Press the mic with your hand out of view.",
       tapFallback: "Tap each product on the screen while you speak.",
+      handSeen: "Hand in view",
+      handMissing: "Show your pointing hand",
       summary: (pointed: number, found: number): string => `${pointed} pointed · ${found} on the counter`,
     },
     ground: {
@@ -180,6 +182,9 @@ const en = {
     pointAgain: "Point again",
     empty: "Your basket is empty.",
     total: "Total",
+    noHand: "The camera didn't see your hand pointing. Keep your hand in view and point at each product.",
+    where: "Where you pointed",
+    nothingHere: "Nothing here",
   },
 };
 
@@ -280,6 +285,8 @@ const sw: Messages = {
       noDwell: "Sikuona ukielekeza. Weka mkono ndani ya kamera na utulize kidole kwenye kila bidhaa.",
       noObjects: "Sikuona bidhaa kaunta. Bonyeza mic mkono ukiwa nje ya picha.",
       tapFallback: "Gusa kila bidhaa kwenye skrini huku ukiongea.",
+      handSeen: "Mkono unaonekana",
+      handMissing: "Onyesha mkono unaoelekeza",
       summary: (pointed, found) => `Umeelekeza: ${pointed} · Vitu kaunta: ${found}`,
     },
     ground: {
@@ -364,6 +371,9 @@ const sw: Messages = {
     pointAgain: "Elekeza tena",
     empty: "Kikapu ni tupu.",
     total: "Jumla",
+    noHand: "Kamera haikuona mkono ukielekeza. Weka mkono ndani ya kamera na uelekeze kila bidhaa.",
+    where: "Ulipoelekeza",
+    nothingHere: "Hakuna kitu",
   },
 };
 

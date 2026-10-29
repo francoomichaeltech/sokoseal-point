@@ -3,38 +3,42 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { HandLandmarker } from "@mediapipe/tasks-vision";
 import type { Point } from "@/lib/grounding/types";
-import { DwellDetector, type Dwell, type Ray } from "./dwell";
+import type { Ray } from "./dwell";
 import { readAim } from "./gesture";
 import { loadHandLandmarker } from "./hand-tracker";
 import { PointFilter } from "./one-euro";
+import type { TraceSample } from "./trace";
 
-// 20 fps is enough to time a pause; nothing is drawn per frame.
+// 20 fps is enough to follow where the finger aims.
 const DETECT_INTERVAL_MS = 50;
 // Pointing often starts just before the button is pressed.
 const PRE_ROLL_MS = 1_500;
-const MAX_DWELLS = 20;
+// Two minutes at 20 fps, the longest hold.
+const MAX_SAMPLES = 2_400;
+// The hand indicator stays on through dropouts shorter than this.
+const VISIBLE_HOLD_MS = 300;
+// A fallback tap is recorded as a short pointing at that spot.
+const TAP_MS = 400;
 const MIN_CUTOFF = 1.5;
 const BETA = 4;
 
 export type TrackerStatus = "loading" | "ready" | "error";
 
-// Records where the finger paused without drawing anything. begin() and end() bracket one hold.
+// Records where the finger aims on every frame without drawing anything. begin() and end() bracket one hold.
 export function usePointingSession(videoRef: RefObject<HTMLVideoElement | null>, enabled: boolean) {
   const [status, setStatus] = useState<TrackerStatus>("loading");
-  const [count, setCount] = useState(0);
-  const dwellsRef = useRef<Dwell[]>([]);
+  const [handVisible, setHandVisible] = useState(false);
+  const samplesRef = useRef<TraceSample[]>([]);
   const sinceRef = useRef<number | null>(null);
   // Last time a hand was in view, so the counter is only scanned when it is clear.
   const handSeenAtRef = useRef(-Infinity);
 
-  // Keeps the pauses of the current hold plus a short pre-roll before it.
-  const push = useCallback((dwell: Dwell) => {
-    const since = sinceRef.current;
-    const kept = [...dwellsRef.current, dwell]
-      .filter((item) => (since !== null && item.at >= since) || dwell.at - item.at <= PRE_ROLL_MS)
-      .slice(-MAX_DWELLS);
-    dwellsRef.current = kept;
-    if (since !== null) setCount(kept.filter((item) => item.at >= since).length);
+  // Keeps the current hold plus a short pre-roll before it.
+  const push = useCallback((sample: TraceSample) => {
+    const floor = sinceRef.current ?? sample.at - PRE_ROLL_MS;
+    const kept = samplesRef.current.filter((item) => item.at >= floor);
+    kept.push(sample);
+    samplesRef.current = kept.length > MAX_SAMPLES ? kept.slice(-MAX_SAMPLES) : kept;
   }, []);
 
   useEffect(() => {
@@ -45,7 +49,6 @@ export function usePointingSession(videoRef: RefObject<HTMLVideoElement | null>,
     let lastRun = 0;
     const tipFilter = new PointFilter(MIN_CUTOFF, BETA);
     const baseFilter = new PointFilter(MIN_CUTOFF, BETA);
-    const detector = new DwellDetector();
 
     const readRay = (landmarker: HandLandmarker, video: HTMLVideoElement, now: number): Ray | null => {
       const landmarks = landmarker.detectForVideo(video, now).landmarks[0];
@@ -84,10 +87,13 @@ export function usePointingSession(videoRef: RefObject<HTMLVideoElement | null>,
           // A dropped frame is not worth surfacing; the next tick tries again.
           return;
         }
-        if (ray) handSeenAtRef.current = now;
 
-        const dwell = detector.update(ray, now);
-        if (dwell) push(dwell);
+        if (ray) {
+          handSeenAtRef.current = now;
+          push({ ...ray, at: now });
+        }
+        const visible = now - handSeenAtRef.current < VISIBLE_HOLD_MS;
+        setHandVisible((current) => (current === visible ? current : visible));
       };
 
       frameId = requestAnimationFrame(tick);
@@ -106,34 +112,35 @@ export function usePointingSession(videoRef: RefObject<HTMLVideoElement | null>,
     return () => {
       cancelled = true;
       cancelAnimationFrame(frameId);
-      dwellsRef.current = [];
+      samplesRef.current = [];
+      setHandVisible(false);
     };
   }, [enabled, videoRef, push]);
 
   const begin = useCallback(() => {
-    const since = performance.now() - PRE_ROLL_MS;
-    sinceRef.current = since;
-    setCount(dwellsRef.current.filter((item) => item.at >= since).length);
+    sinceRef.current = performance.now() - PRE_ROLL_MS;
   }, []);
 
-  const end = useCallback((): Dwell[] => {
+  const end = useCallback((): TraceSample[] => {
     const since = sinceRef.current;
     sinceRef.current = null;
-    setCount(0);
     if (since === null) return [];
 
-    const taken = dwellsRef.current.filter((item) => item.at >= since);
-    dwellsRef.current = [];
+    const taken = samplesRef.current.filter((item) => item.at >= since);
+    samplesRef.current = [];
     return taken;
   }, []);
 
-  // Fallback when hand tracking is unavailable: a tap counts as a pause at that spot.
+  // Fallback when hand tracking is unavailable: a tap counts as pointing at that spot.
   const addTap = useCallback(
     (tip: Point) => {
-      push({ tip, direction: { x: 0, y: 0 }, hand: { x1: tip.x, y1: tip.y, x2: tip.x, y2: tip.y }, at: performance.now() });
+      const now = performance.now();
+      const sample = { tip, direction: { x: 0, y: 0 }, hand: { x1: tip.x, y1: tip.y, x2: tip.x, y2: tip.y } };
+      push({ ...sample, at: now - TAP_MS });
+      push({ ...sample, at: now });
     },
     [push],
   );
 
-  return { status, count, begin, end, addTap, handSeenAtRef };
+  return { status, handVisible, begin, end, addTap, handSeenAtRef };
 }

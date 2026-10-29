@@ -1,20 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Mic } from "lucide-react";
+import { Hand, Mic } from "lucide-react";
 import { useMessages } from "@/lib/i18n/locale";
 import { useMic, type Recording } from "@/lib/media/use-mic";
-
-const MAX_DOTS = 10;
 
 type HoldToSpeakProps = {
   onHoldStart: () => void;
   /** null when the hold was too short or cancelled. */
   onHoldEnd: (recording: Recording | null) => void;
-  pointCount: number;
+  /** Whether the camera sees a hand right now; null when hand tracking is not in use. */
+  handVisible: boolean | null;
 };
 
-export function HoldToSpeak({ onHoldStart, onHoldEnd, pointCount }: HoldToSpeakProps) {
+export function HoldToSpeak({ onHoldStart, onHoldEnd, handVisible }: HoldToSpeakProps) {
   const { status, level, start, stop } = useMic();
   const t = useMessages().point;
   const [tooShort, setTooShort] = useState(false);
@@ -81,11 +80,10 @@ export function HoldToSpeak({ onHoldStart, onHoldEnd, pointCount }: HoldToSpeakP
 
       <p aria-live="polite" className="flex min-h-6 items-center gap-2 text-sm font-medium">
         {label}
-        {status === "listening" && pointCount > 0 && (
-          <span aria-label={t.pointing.counted(pointCount)} className="flex gap-1">
-            {Array.from({ length: Math.min(pointCount, MAX_DOTS) }, (_, index) => (
-              <span key={index} aria-hidden className="size-2 rounded-full bg-primary" />
-            ))}
+        {status === "listening" && handVisible !== null && (
+          <span className={`flex items-center gap-1 text-xs ${handVisible ? "text-verified" : "text-muted"}`}>
+            <Hand aria-hidden size={14} />
+            {handVisible ? t.pointing.handSeen : t.pointing.handMissing}
           </span>
         )}
       </p>

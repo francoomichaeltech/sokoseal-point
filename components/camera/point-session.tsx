@@ -7,12 +7,11 @@ import { requestScan } from "@/lib/grounding/scan-client";
 import { captureFrame } from "@/lib/media/capture";
 import { useCamera } from "@/lib/media/use-camera";
 import type { Recording } from "@/lib/media/use-mic";
-import { mergeDwells } from "@/lib/pointing/dwell";
 import { locateTargets, type Scan } from "@/lib/pointing/locate";
 import { createThumbnailer, sceneDifference, type Thumbnail } from "@/lib/pointing/scene";
 import { usePointingSession } from "@/lib/pointing/use-pointing-session";
 import { runHold } from "@/lib/requests/run-hold";
-import { catalogueKeywords } from "@/lib/voice/keywords";
+import { catalogueKeywords, voiceKeywords } from "@/lib/voice/keywords";
 import { CameraView } from "./camera-view";
 import { HoldToSpeak } from "./hold-to-speak";
 import { PointTips } from "./point-tips";
@@ -90,7 +89,7 @@ export function PointSession() {
 
   function handleHoldEnd(recording: Recording | null) {
     holdingRef.current = false;
-    const dwells = mergeDwells(pointing.end());
+    const samples = pointing.end();
     const scan = scanRef.current;
     scanRef.current = null;
     if (!recording) return;
@@ -99,10 +98,10 @@ export function PointSession() {
     void runHold({
       eventId: crypto.randomUUID(),
       wav: recording.wav,
-      keywords: catalogueKeywords(catalogue),
-      pauses: dwells.length,
+      voiceHints: voiceKeywords(catalogue),
+      productNames: catalogueKeywords(catalogue),
       // Grounding and identity run while the speech is transcribed.
-      located: locateTargets(scan, dwells, catalogue),
+      located: locateTargets(scan, samples, catalogue),
     });
     router.push("/basket");
   }
@@ -113,7 +112,11 @@ export function PointSession() {
         <CameraView camera={camera} tracker={pointing.status} onTap={pointing.addTap} />
         <PointTips />
       </div>
-      <HoldToSpeak onHoldStart={handleHoldStart} onHoldEnd={handleHoldEnd} pointCount={pointing.count} />
+      <HoldToSpeak
+        onHoldStart={handleHoldStart}
+        onHoldEnd={handleHoldEnd}
+        handVisible={pointing.status === "ready" ? pointing.handVisible : null}
+      />
     </div>
   );
 }

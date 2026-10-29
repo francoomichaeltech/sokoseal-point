@@ -12,9 +12,11 @@ export function DesktopHandoff() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-line bg-surface px-8">
-        <Wordmark />
-        <LanguageSwitch />
+      <header className="shrink-0 border-b border-line bg-surface">
+        <div className="mx-auto flex h-16 w-full max-w-4xl items-center justify-between px-4 sm:px-12">
+          <Wordmark />
+          <LanguageSwitch />
+        </div>
       </header>
 
       <main className="flex flex-1 items-center justify-center p-8">
