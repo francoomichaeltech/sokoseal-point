@@ -10,9 +10,7 @@ export type BasketLine = {
   quantity: number;
 };
 
-export type Basket = { lines: BasketLine[]; appliedEvents: string[] };
-
-/** What one finger pause pointed at, after grounding and identity. */
+/** What one pointing pointed at, after grounding and identity. */
 export type PointedTarget =
   | { state: "product"; sku: string }
   | { state: "unknown" }
@@ -33,12 +31,27 @@ export type RejectReason =
   | "too_many";
 
 export type Outcome = {
+  /** Position of the action in the spoken request. */
+  index: number;
   action: ActionKind;
   quantity: number | null;
   spoken: string;
-  /** 1-based pause the action was paired with, to match the numbered outline on screen. */
+  /** 1-based pointing the action was paired with. */
   pointNumber: number | null;
 } & (
   | { status: "applied"; sku: string; name: string; lineQuantity: number }
   | { status: "rejected"; reason: RejectReason }
 );
+
+/** Basket history: each request as it was applied, and each manual change after it. */
+export type ProofEntry =
+  | { kind: "request"; at: number; heard: string; transcript: string; outcomes: Outcome[] }
+  | { kind: "edit"; at: number; name: string; from: number; to: number };
+
+export type Basket = {
+  lines: BasketLine[];
+  appliedEvents: string[];
+  proof: ProofEntry[];
+  /** Set when the basket is sealed; a sealed basket cannot change. */
+  sealedAt: number | null;
+};

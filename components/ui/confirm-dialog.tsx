@@ -7,12 +7,22 @@ type ConfirmDialogProps = {
   body: string;
   confirmLabel: string;
   cancelLabel: string;
+  /** danger for destructive actions such as delete; primary for a normal confirmation. */
+  tone?: "danger" | "primary";
   onConfirm: () => void;
   onCancel: () => void;
 };
 
 // Native modal dialog: focus stays inside, Esc and a tap on the backdrop cancel.
-export function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCancel }: ConfirmDialogProps) {
+export function ConfirmDialog({
+  title,
+  body,
+  confirmLabel,
+  cancelLabel,
+  tone = "danger",
+  onConfirm,
+  onCancel,
+}: ConfirmDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -43,11 +53,15 @@ export function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfir
           <button
             type="button"
             onClick={onCancel}
-            className="h-11 flex-1 rounded-card border border-line bg-surface font-semibold"
+            className="h-12 flex-1 rounded-card border border-line bg-surface font-semibold"
           >
             {cancelLabel}
           </button>
-          <button type="button" onClick={onConfirm} className="h-11 flex-1 rounded-card bg-danger font-semibold text-white">
+          <button
+            type="button"
+            onClick={onConfirm}
+            className={`h-12 flex-1 rounded-card font-semibold text-white ${tone === "danger" ? "bg-danger" : "bg-primary"}`}
+          >
             {confirmLabel}
           </button>
         </div>

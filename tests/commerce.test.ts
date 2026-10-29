@@ -102,3 +102,18 @@ describe("applyActions", () => {
     expect(start).toEqual([line("MUG1", 2)]);
   });
 });
+
+describe("choices", () => {
+  it("uses a product the user picked and drops a skipped request", () => {
+    const { lines, outcomes } = applyActions(
+      [],
+      [act("ADD", 2, "POINT"), act("ADD", 1, "POINT")],
+      [mug],
+      products,
+      ["PEN1", null],
+    );
+
+    expect(summary(lines)).toEqual(["PEN1 2"]);
+    expect(outcomes).toHaveLength(1);
+  });
+});

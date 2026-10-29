@@ -42,5 +42,6 @@ export async function runHold({ eventId, wav, voiceHints, productNames, located 
     pointed: marks.length,
     objectCount: place.objectCount,
     handSeen: place.handSeen,
+    evidence: place.evidence,
   });
 }

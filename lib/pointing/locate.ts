@@ -1,6 +1,6 @@
 import type { Product } from "@/lib/catalogue/types";
 import type { PointedTarget } from "@/lib/commerce/types";
-import type { ScanResult } from "@/lib/grounding/types";
+import type { Box, ScanResult } from "@/lib/grounding/types";
 import { identifyTargets } from "@/lib/identity/identify-targets";
 import type { TargetIdentity } from "@/lib/identity/types";
 import type { Frame } from "@/lib/media/capture";
@@ -8,10 +8,13 @@ import { segmentVisits, type TraceSample } from "./trace";
 
 export type Scan = { result: ScanResult; frame: Frame };
 
-/** One pointing at a product: what it was and how long the finger stayed on it. */
-export type PointedMark = { target: PointedTarget; name: string | null; duration: number };
+/** One pointing at a product: what it was, where it is in the frame and how long the finger stayed on it. */
+export type PointedMark = { target: PointedTarget; name: string | null; box: Box | null; duration: number };
 
-export type Located = { marks: PointedMark[]; objectCount: number; handSeen: boolean };
+/** The counter frame the pointings were resolved against, shown to the user for review. */
+export type Evidence = { frameUrl: string; width: number; height: number };
+
+export type Located = { marks: PointedMark[]; objectCount: number; handSeen: boolean; evidence: Evidence | null };
 
 function fromIdentity(identity: TargetIdentity | undefined): PointedTarget {
   switch (identity?.state) {
@@ -33,7 +36,7 @@ export async function locateTargets(
   products: Product[],
 ): Promise<Located> {
   const handSeen = samples.length > 0;
-  const failed: Located = { marks: [], objectCount: 0, handSeen };
+  const failed: Located = { marks: [], objectCount: 0, handSeen, evidence: null };
   if (!scan) return failed;
 
   try {
@@ -48,17 +51,23 @@ export async function locateTargets(
 
     const marks = visits.map((visit): PointedMark => {
       const duration = visit.end - visit.start;
-      if (visit.hit.kind === "ambiguous") return { target: { state: "ambiguous" }, name: null, duration };
+      if (visit.hit.kind === "ambiguous") return { target: { state: "ambiguous" }, name: null, box: null, duration };
 
       const identity = identities[boxes.indexOf(visit.hit.box)];
       return {
         target: fromIdentity(identity),
         name: identity?.state === "product" ? identity.name : null,
+        box: visit.hit.box,
         duration,
       };
     });
 
-    return { marks, objectCount: result.boxes.length, handSeen };
+    return {
+      marks,
+      objectCount: result.boxes.length,
+      handSeen,
+      evidence: { frameUrl: frame.url, width: frame.width, height: frame.height },
+    };
   } catch {
     return failed;
   }

@@ -4,6 +4,9 @@ import type { BasketLine, Outcome, PointedTarget, RejectReason } from "./types";
 
 export const MAX_LINE_QUANTITY = 999;
 
+/** Per action: a SKU the user picked, null to skip the action, undefined to resolve it normally. */
+export type Choice = string | null | undefined;
+
 type Resolution = { sku: string } | { reason: RejectReason };
 
 function normalize(text: string) {
@@ -43,21 +46,22 @@ export function applyActions(
   actions: IntentAction[],
   targets: PointedTarget[],
   products: Product[],
+  chosen: Choice[] = [],
 ): { lines: BasketLine[]; outcomes: Outcome[] } {
   const active = products.filter((product) => product.active);
   const bySku = new Map(active.map((product) => [product.sku, product]));
   const next = lines.map((line) => ({ ...line }));
   const outcomes: Outcome[] = [];
 
-  // Pauses pair with this/that references in spoken order. Any other count means the pairing
-  // is unknown, so none of those requests is applied.
+  // Pointings pair with this/that references in spoken order. Any other count means the pairing
+  // is unknown, so none of those requests is applied unless the user picks the product.
   const pointCount = actions.filter((action) => action.reference === "POINT").length;
   const paired = targets.length === pointCount;
   let pointIndex = 0;
   let previous: string | null = null;
 
-  for (const action of actions) {
-    const base = { action: action.action, quantity: action.quantity, spoken: action.spoken };
+  for (const [index, action] of actions.entries()) {
+    const base = { index, action: action.action, quantity: action.quantity, spoken: action.spoken };
     let pointNumber: number | null = null;
     let resolution: Resolution;
 
@@ -75,11 +79,19 @@ export function applyActions(
       resolution = fromName(action.namedProduct ?? "", active);
     }
 
+    const picked = chosen[index];
+    if (picked === null) {
+      // Skipped by the user: nothing changes and a later "same" has nothing to follow.
+      previous = null;
+      continue;
+    }
+    if (picked) resolution = { sku: picked };
+
     const reject = (reason: RejectReason) => {
       outcomes.push({ ...base, pointNumber, status: "rejected", reason });
     };
 
-        const product: Product | undefined = "sku" in resolution ? bySku.get(resolution.sku) : undefined;
+    const product: Product | undefined = "sku" in resolution ? bySku.get(resolution.sku) : undefined;
     if (!product) {
       previous = null;
       reject("reason" in resolution ? resolution.reason : "not_in_shop");
@@ -87,8 +99,8 @@ export function applyActions(
     }
     previous = product.sku;
 
-    const index = next.findIndex((line) => line.sku === product.sku);
-    const current = index >= 0 ? next[index].quantity : 0;
+    const lineIndex = next.findIndex((line) => line.sku === product.sku);
+    const current = lineIndex >= 0 ? next[lineIndex].quantity : 0;
     let quantity: number;
 
     if (action.action === "REMOVE") {
@@ -122,8 +134,8 @@ export function applyActions(
       currency: product.currency,
       quantity,
     };
-    if (quantity === 0) next.splice(index, 1);
-    else if (index >= 0) next[index] = line;
+    if (quantity === 0) next.splice(lineIndex, 1);
+    else if (lineIndex >= 0) next[lineIndex] = line;
     else next.push(line);
 
     outcomes.push({ ...base, pointNumber, status: "applied", sku: product.sku, name: product.name, lineQuantity: quantity });
