@@ -18,6 +18,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Required for env(safe-area-inset-*) to work on notched phones.
   viewportFit: "cover",
+  // Android shrinks the layout above the on-screen keyboard, so the header stays visible while typing.
+  interactiveWidget: "resizes-content",
   themeColor: "#F7F7F4",
 };
 

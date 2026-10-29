@@ -31,10 +31,9 @@ type Chip = { text: string; tone: "neutral" | "busy" | "attention" };
 
 type Outline = { box: Box; numbers: number[]; label: TargetIdentity | null; ambiguous: boolean };
 
-// Point stays quiet: tips explain how to point, and hold results are reviewed in the basket.
+// Point stays quiet: no loading or diagnostic text. Only a tracking failure is shown.
 function statusChip(tracker: TrackerStatus, t: Messages["point"]): Chip {
   if (tracker === "error") return { text: t.pointing.unsupported, tone: "attention" };
-  if (tracker === "loading") return { text: t.pointing.loading, tone: "busy" };
   return { text: t.hint, tone: "neutral" };
 }
 

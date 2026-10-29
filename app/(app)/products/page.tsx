@@ -32,7 +32,7 @@ export default function ProductsPage() {
   return (
     <>
       {/* Stays under the app header while the product list scrolls. */}
-      <div className="sticky top-[calc(var(--header-height)+env(safe-area-inset-top))] z-10 -mx-4 -mt-4 flex items-center justify-between gap-3 border-b border-line bg-canvas px-4 py-3">
+      <div className="sticky top-0 z-10 -mx-4 -mt-4 flex items-center justify-between gap-3 border-b border-line bg-canvas px-4 py-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold">{t.title}</h1>
           <p className="text-sm text-muted">{t.summary(activeCount, shop.currency)}</p>

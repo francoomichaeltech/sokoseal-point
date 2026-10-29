@@ -21,7 +21,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface pb-safe"
+      className="bottom-nav fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface pb-safe"
     >
       <ul className="mx-auto grid h-(--nav-height) max-w-md grid-cols-3">
         {items.map(({ href, key, Icon }) => {
