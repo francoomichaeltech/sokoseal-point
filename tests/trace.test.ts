@@ -23,7 +23,7 @@ function aim(target: "mug" | "pen", from: number, to: number) {
   return samples;
 }
 
-const kinds = (samples: TraceSample[]) =>
+const names = (samples: TraceSample[]) =>
   segmentVisits(samples, boxes).map((visit) =>
     visit.hit.kind === "box" ? (visit.hit.box === mug ? "mug" : "pen") : visit.hit.kind,
   );
@@ -31,26 +31,24 @@ const kinds = (samples: TraceSample[]) =>
 describe("segmentVisits", () => {
   it("finds each product pointed at, in order, without needing a still finger", () => {
     const moving = [sample(0.4, 0.8, 500, false), sample(0.5, 0.75, 550, false), sample(0.6, 0.7, 600, false)];
-    expect(kinds([...aim("mug", 0, 450), ...moving, ...aim("pen", 650, 1100)])).toEqual(["mug", "pen"]);
+    expect(names([...aim("mug", 0, 450), ...moving, ...aim("pen", 650, 1100)])).toEqual(["mug", "pen"]);
   });
 
   it("does not split a pointing on a short flicker away", () => {
-    expect(kinds([...aim("mug", 0, 400), ...aim("pen", 450, 500), ...aim("mug", 550, 900)])).toEqual(["mug"]);
+    expect(names([...aim("mug", 0, 400), ...aim("pen", 450, 500), ...aim("mug", 550, 900)])).toEqual(["mug"]);
   });
 
   it("counts the same product again after pointing elsewhere", () => {
-    expect(kinds([...aim("mug", 0, 400), ...aim("pen", 500, 900), ...aim("mug", 1000, 1400)])).toEqual([
+    expect(names([...aim("mug", 0, 400), ...aim("pen", 500, 900), ...aim("mug", 1000, 1400)])).toEqual([
       "mug",
       "pen",
       "mug",
     ]);
   });
 
-  it("reports a still finger on empty space, but not a finger moving across it", () => {
-    const still = [0, 100, 200, 300, 400, 500, 600, 700].map((at) => sample(0.5, 0.8, at, false));
-    expect(kinds(still)).toEqual(["none"]);
-
-    const moving = [0, 100, 200, 300, 400, 500, 600, 700].map((at, index) => sample(0.3 + index * 0.05, 0.8, at, false));
-    expect(kinds(moving)).toEqual([]);
+  it("never counts the table, and skips a hand passing over a product", () => {
+    const table = [0, 100, 200, 300, 400, 500, 600, 700].map((at) => sample(0.5, 0.8, at, false));
+    expect(names(table)).toEqual([]);
+    expect(names(aim("mug", 0, 200))).toEqual([]);
   });
 });

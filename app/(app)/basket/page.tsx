@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { LoaderCircle, ShoppingBasket } from "lucide-react";
-import { PointedEvidence } from "@/components/basket/pointed-evidence";
+import { PointedChips } from "@/components/basket/pointed-chips";
 import { OutcomeList } from "@/components/camera/outcome-list";
 import { useProducts } from "@/lib/catalogue/store";
 import { applyActions } from "@/lib/commerce/plan";
@@ -85,7 +85,7 @@ function RequestCard() {
       {!request.handSeen && request.actions.some((action) => action.reference === "POINT") && (
         <p className="mt-2 text-sm text-attention">{t.basket.noHand}</p>
       )}
-      {request.evidence && request.evidence.marks.length > 0 && <PointedEvidence evidence={request.evidence} />}
+      {request.marks.length > 0 && <PointedChips marks={request.marks} />}
 
       {request.actions.length === 0 ? (
         <p className="mt-3 text-sm text-muted">{t.point.intent.none}</p>

@@ -185,6 +185,9 @@ const en = {
     noHand: "The camera didn't see your hand pointing. Keep your hand in view and point at each product.",
     where: "Where you pointed",
     nothingHere: "Nothing here",
+    inShop: (name: string): string => `${name} · in your shop`,
+    notInShop: "Not in your shop",
+    unclear: "Unclear",
   },
 };
 
@@ -374,6 +377,9 @@ const sw: Messages = {
     noHand: "Kamera haikuona mkono ukielekeza. Weka mkono ndani ya kamera na uelekeze kila bidhaa.",
     where: "Ulipoelekeza",
     nothingHere: "Hakuna kitu",
+    inShop: (name) => `${name} · kipo dukani`,
+    notInShop: "Haipo dukani",
+    unclear: "Haieleweki",
   },
 };
 

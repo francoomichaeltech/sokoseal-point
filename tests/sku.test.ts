@@ -1,31 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { checkSku, normalizeSku } from "../lib/catalogue/sku";
+import { generateSku } from "../lib/catalogue/sku";
 
-describe("normalizeSku", () => {
-  it("keeps the merchant's code and case, tidying spaces", () => {
-    expect(normalizeSku("  Coke  500ml ")).toBe("Coke 500ml");
+describe("generateSku", () => {
+  it("uses the first three letters of the name", () => {
+    expect(generateSku("Pepsi", [])).toBe("PEP1");
+    expect(generateSku("Coca-Cola 500ml", [])).toBe("COC1");
   });
 
-  it("limits the length", () => {
-    expect(normalizeSku("x".repeat(40))).toHaveLength(30);
-  });
-});
-
-describe("checkSku", () => {
-  it("accepts any non-empty unused code", () => {
-    expect(checkSku("chumvi-1kg", ["MUG1"])).toBeNull();
+  it("takes the next free number, ignoring case", () => {
+    expect(generateSku("Pepsi", ["PEP1", "pep2"])).toBe("PEP3");
   });
 
-  it("rejects an empty code", () => {
-    expect(checkSku("", [])).toBe("empty");
-  });
-
-  it("rejects a code used by another product, ignoring case", () => {
-    expect(checkSku("mug1", ["MUG1"])).toBe("taken");
-  });
-
-  it("rejects the words identity uses for no match", () => {
-    expect(checkSku("Unknown", [])).toBe("reserved");
-    expect(checkSku("AMBIGUOUS", [])).toBe("reserved");
+  it("falls back when the name has no letters or digits", () => {
+    expect(generateSku("★", [])).toBe("ITEM1");
   });
 });

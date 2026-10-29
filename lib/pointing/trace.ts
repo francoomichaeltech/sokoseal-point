@@ -4,24 +4,22 @@ import { resolveDwell } from "./resolve";
 
 export type TraceSample = Ray & { at: number };
 
-export type Hit = { kind: "box"; box: Box } | { kind: "ambiguous" } | { kind: "none" };
+export type Hit = { kind: "box"; box: Box } | { kind: "ambiguous" };
 
 export type Visit = { hit: Hit; tip: Point; start: number; end: number };
 
 // Missed frames shorter than this keep a run going.
 const MAX_GAP_MS = 250;
-// Aiming at the same product this long counts as pointing at it; the finger does not need to be still.
-const MIN_VISIT_MS = 250;
-// Empty space only counts when the finger is held still there, so moving between products is ignored.
-const MIN_EMPTY_MS = 600;
-const STILL_SPREAD = 0.04;
+// Aiming at one product this long counts as pointing at it. It skips the hand passing over a product
+// on the way in or out; the finger does not need to be still.
+const MIN_VISIT_MS = 300;
 // A short flicker away from a product does not split one pointing into two.
 const REJOIN_MS = 500;
 
-function hitFor(boxes: Box[], sample: TraceSample): Hit {
+function hitFor(boxes: Box[], sample: TraceSample): Hit | null {
   const selection = resolveDwell(boxes, sample);
   if (selection.status === "MATCH") return { kind: "box", box: selection.box };
-  return selection.status === "AMBIGUOUS" ? { kind: "ambiguous" } : { kind: "none" };
+  return selection.status === "AMBIGUOUS" ? { kind: "ambiguous" } : null;
 }
 
 function sameHit(a: Hit, b: Hit) {
@@ -34,18 +32,15 @@ function mean(points: Point[]): Point {
   return { x: sum.x / points.length, y: sum.y / points.length };
 }
 
-function spread(points: Point[]) {
-  const center = mean(points);
-  return Math.max(...points.map((point) => Math.hypot(point.x - center.x, point.y - center.y)));
-}
-
-/** Splits a fingertip trace into the products (or empty spots) pointed at, in order. Samples must be sorted by time. */
+/** Products pointed at, in order. Empty space such as the table is never counted. Samples must be sorted by time. */
 export function segmentVisits(samples: TraceSample[], boxes: Box[]): Visit[] {
   type Run = { hit: Hit; start: number; end: number; tips: Point[] };
   const runs: Run[] = [];
 
   for (const sample of samples) {
     const hit = hitFor(boxes, sample);
+    if (!hit) continue;
+
     const last = runs.at(-1);
     if (last && sameHit(last.hit, hit) && sample.at - last.end <= MAX_GAP_MS) {
       last.end = sample.at;
@@ -57,14 +52,9 @@ export function segmentVisits(samples: TraceSample[], boxes: Box[]): Visit[] {
 
   const visits: Visit[] = [];
   for (const run of runs) {
-    const duration = run.end - run.start;
-    const counts =
-      run.hit.kind === "none"
-        ? duration >= MIN_EMPTY_MS && spread(run.tips) <= STILL_SPREAD
-        : duration >= MIN_VISIT_MS;
-    if (!counts) continue;
+    if (run.end - run.start < MIN_VISIT_MS) continue;
 
-    const last = visits.at(-1);
+    const last = visits.at(-1)
     if (last && sameHit(last.hit, run.hit) && run.start - last.end <= REJOIN_MS) {
       last.end = run.end;
       continue;

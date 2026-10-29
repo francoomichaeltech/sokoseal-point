@@ -34,7 +34,6 @@ export function OutcomeList({ outcome }: { outcome: HoldOutcome }) {
           )}
           <span className="min-w-0 flex-1">
             <span data-qty className="font-semibold">
-              {item.pointNumber !== null && `${item.pointNumber} · `}
               {t.intent.actions[item.action]} {item.quantity ?? (item.action === "REMOVE" ? t.intent.all : "?")}
               {item.status === "applied" && ` · ${item.name}`}
             </span>

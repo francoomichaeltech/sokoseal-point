@@ -1,4 +1,5 @@
 import { requestIntent } from "@/lib/intent/client";
+import { keepLongest } from "@/lib/pointing/fit";
 import type { Located } from "@/lib/pointing/locate";
 import { requestTranscript } from "@/lib/voice/client";
 import { setRequest, updateRequest } from "./store";
@@ -22,21 +23,24 @@ export async function runHold({ eventId, wav, voiceHints, productNames, located 
   const [speech, place] = await Promise.all([requestTranscript(wav, voiceHints), located]);
   if (speech.status !== "OK") return fail();
 
-  const pointed = place.targets.length;
-  const intent = speech.transcript ? await requestIntent(speech.transcript, productNames, pointed) : null;
+  const intent = speech.transcript ? await requestIntent(speech.transcript, productNames, place.marks.length) : null;
   if (intent && intent.status !== "OK") return fail();
+
+  const actions = intent?.intent.actions ?? [];
+  const pointRequests = actions.filter((action) => action.reference === "POINT").length;
+  const marks = pointRequests > 0 ? keepLongest(place.marks, pointRequests) : place.marks;
 
   updateRequest(eventId, {
     eventId,
     phase: "ready",
     heard: speech.transcript,
     transcript: intent?.intent.transcript || speech.transcript,
-    actions: intent?.intent.actions ?? [],
+    actions,
     needsClarification: intent?.intent.needsClarification ?? false,
-    targets: place.targets,
-    pointed,
+    targets: marks.map((mark) => mark.target),
+    marks,
+    pointed: marks.length,
     objectCount: place.objectCount,
     handSeen: place.handSeen,
-    evidence: place.evidence,
   });
 }

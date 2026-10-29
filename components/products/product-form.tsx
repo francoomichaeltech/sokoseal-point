@@ -4,7 +4,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Camera, ImagePlus, X } from "lucide-react";
 import { deletePhotos, preparePhoto, savePhoto } from "@/lib/catalogue/photos";
-import { checkSku, normalizeSku, SKU_MAX_LENGTH } from "@/lib/catalogue/sku";
+import { generateSku } from "@/lib/catalogue/sku";
 import { upsertProduct, useProducts } from "@/lib/catalogue/store";
 import type { Product } from "@/lib/catalogue/types";
 import { useMessages } from "@/lib/i18n/locale";
@@ -52,7 +52,6 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
   const currency = product?.currency ?? shopCurrency;
 
   const [name, setName] = useState(product?.name ?? "");
-  const [skuInput, setSkuInput] = useState(product?.sku ?? "");
   const [price, setPrice] = useState(product ? priceToInput(product.price, product.currency) : "");
   const [photos, setPhotos] = useState<PhotoDraft[]>(
     () => product?.referenceImages.map((id) => ({ id })) ?? [],
@@ -65,20 +64,12 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
 
   const otherSkus = products.filter((item) => item.id !== product?.id).map((item) => item.sku);
   const trimmedName = name.trim();
-  const sku = normalizeSku(skuInput);
-  const skuProblem = checkSku(sku, otherSkus);
+  // Existing products keep their SKU; new ones get one from the name, unique in the shop.
+  const sku = product?.sku ?? generateSku(trimmedName, otherSkus);
   const amount = parsePrice(price, currency);
 
   const errors = {
     name: trimmedName ? null : t.errors.name,
-    sku:
-      skuProblem === "empty"
-        ? t.errors.sku
-        : skuProblem === "taken"
-          ? t.errors.skuTaken
-          : skuProblem === "reserved"
-            ? t.errors.skuReserved
-            : null,
     price: amount === null ? t.errors.price(currency) : null,
     photos: photos.length > 0 ? null : t.errors.photos,
   };
@@ -163,21 +154,6 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
             placeholder={t.namePlaceholder}
             aria-invalid={Boolean(visibleError(errors.name))}
             className={inputClass(Boolean(visibleError(errors.name)))}
-          />
-        </Field>
-
-        <Field id="product-sku" label={t.sku} error={visibleError(errors.sku)}>
-          <input
-            id="product-sku"
-            value={skuInput}
-            onChange={(event) => setSkuInput(event.target.value)}
-            maxLength={SKU_MAX_LENGTH}
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            placeholder={t.skuPlaceholder}
-            aria-invalid={Boolean(visibleError(errors.sku))}
-            className={inputClass(Boolean(visibleError(errors.sku)))}
           />
         </Field>
 
