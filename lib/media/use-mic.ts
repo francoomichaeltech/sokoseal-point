@@ -7,8 +7,8 @@ import { markGranted, wasGranted } from "./permissions";
 import { stopTracks } from "./tracks";
 import { encodeWav, resample, TARGET_SAMPLE_RATE } from "./wav";
 
-// One hold is one request; longer holds are cut to keep upload and transcription short.
-const MAX_RECORDING_MS = 15_000;
+// Vercel rejects request bodies over 4.5 MB; 16 kHz 16-bit mono WAV is 32 KB/s, so 2 min fits.
+const MAX_RECORDING_MS = 120_000;
 // Shorter holds are treated as accidental taps.
 const MIN_RECORDING_MS = 400;
 

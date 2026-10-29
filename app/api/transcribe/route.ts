@@ -2,8 +2,8 @@ import { isSameOrigin } from "@/lib/http/same-origin";
 import { isWav } from "@/lib/media/wav";
 import { transcribe } from "@/lib/meta/voice";
 
-// 15 s of 16 kHz 16-bit mono is about 480 KB.
-const MAX_AUDIO_BYTES = 1_000_000;
+// 2 min of 16 kHz 16-bit mono is about 3.8 MB, under Vercel's 4.5 MB body limit.
+const MAX_AUDIO_BYTES = 4_000_000;
 const MAX_KEYWORDS = 50;
 const MAX_KEYWORD_LENGTH = 40;
 

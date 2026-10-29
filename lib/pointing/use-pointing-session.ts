@@ -11,7 +11,7 @@ import { PointFilter } from "./one-euro";
 const DETECT_INTERVAL_MS = 50;
 // Pointing often starts just before the button is pressed.
 const PRE_ROLL_MS = 1_500;
-const MAX_DWELLS = 12;
+const MAX_DWELLS = 20;
 const MIN_CUTOFF = 1.5;
 const BETA = 4;
 

@@ -1,11 +1,11 @@
 import { isSameOrigin } from "@/lib/http/same-origin";
 import { resolveIntent } from "@/lib/intent/adapter";
 
-// About 20 s of speech; anything longer did not come from one hold.
-const MAX_TRANSCRIPT_CHARS = 800;
+// About 2 min of speech; anything longer did not come from one hold.
+const MAX_TRANSCRIPT_CHARS = 3_000;
 const MAX_PRODUCTS = 50;
 const MAX_PRODUCT_LENGTH = 40;
-const MAX_POINTS = 12;
+const MAX_POINTS = 20;
 
 function parseProducts(value: unknown): string[] | null {
   if (value === undefined) return [];

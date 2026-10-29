@@ -2,6 +2,7 @@
 
 import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { useLocale } from "@/lib/i18n/locale";
+import { loadHandLandmarker } from "@/lib/pointing/hand-tracker";
 import { DesktopHandoff } from "./desktop-handoff";
 
 // Desktop = wide screen with a mouse. Tablets and phones (coarse pointer) get the app.
@@ -25,6 +26,12 @@ export function DeviceGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
+
+  useEffect(() => {
+    // Starts downloading the hand model as soon as the phone app opens, so Point is ready on arrival.
+    // A failure here is retried when Point loads it again.
+    if (isDesktop === false) loadHandLandmarker().catch(() => {});
+  }, [isDesktop]);
 
   if (isDesktop === null) return null;
   return isDesktop ? <DesktopHandoff /> : children;

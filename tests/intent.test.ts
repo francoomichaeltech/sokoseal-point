@@ -60,7 +60,7 @@ describe("parseIntent", () => {
   });
 
   it("rejects more actions than one hold may contain", () => {
-    expect(parseIntent(response(Array.from({ length: 11 }, () => action())))).toBeNull();
+    expect(parseIntent(response(Array.from({ length: 21 }, () => action())))).toBeNull();
   });
 
   it("rejects output that is not an object", () => {

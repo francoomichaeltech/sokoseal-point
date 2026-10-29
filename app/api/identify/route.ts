@@ -5,7 +5,7 @@ import type { ReferenceProduct } from "@/lib/identity/types";
 const JPEG_PREFIX = "data:image/jpeg;base64,";
 // Crops are at most 512 px and references 320 px on the long edge.
 const MAX_IMAGE_CHARS = 300_000;
-const MAX_TARGETS = 12;
+const MAX_TARGETS = 20;
 const MAX_PRODUCTS = 10;
 const MAX_IMAGES_PER_PRODUCT = 3;
 const MAX_NAME_LENGTH = 60;

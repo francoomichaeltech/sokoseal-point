@@ -1,9 +1,9 @@
 import type { ActionKind, Intent, IntentAction, Reference } from "./types";
 
-export const MAX_ACTIONS = 10;
+export const MAX_ACTIONS = 20;
 const MAX_QUANTITY = 999;
 const MAX_TEXT_LENGTH = 200;
-const MAX_TRANSCRIPT_LENGTH = 800;
+const MAX_TRANSCRIPT_LENGTH = 3_000;
 
 const ACTIONS: readonly ActionKind[] = ["ADD", "REMOVE", "SET"];
 const REFERENCES: readonly Reference[] = ["POINT", "SAME", "NAMED"];

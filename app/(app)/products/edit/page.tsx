@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ProductForm } from "@/components/products/product-form";
@@ -13,6 +13,8 @@ function EditProduct() {
   const products = useProducts();
   const shop = useShop();
   const t = useMessages().productForm;
+  // Same reason as the new-product page: a fresh form on every visit.
+  const [version, setVersion] = useState(0);
 
   if (!products || !shop) return null;
 
@@ -31,7 +33,14 @@ function EditProduct() {
     );
   }
 
-  return <ProductForm key={product.id} product={product} currency={shop.currency} />;
+  return (
+    <ProductForm
+      key={`${product.id}-${version}`}
+      product={product}
+      currency={shop.currency}
+      onDone={() => setVersion((value) => value + 1)}
+    />
+  );
 }
 
 export default function EditProductPage() {

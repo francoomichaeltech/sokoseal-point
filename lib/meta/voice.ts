@@ -1,7 +1,7 @@
 import "server-only";
 import type { TranscriptResult } from "@/lib/voice/types";
 
-const TIMEOUT_MS = 20_000;
+const TIMEOUT_MS = 60_000;
 
 // One-shot transcription in push-to-talk mode. Keywords bias recognition; they do not restrict it.
 export async function transcribe(wav: Blob, keywords: string[] = []): Promise<TranscriptResult> {

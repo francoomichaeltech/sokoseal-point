@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, Camera, ImagePlus, Trash2, X } from "lucide-react";
 import { deletePhotos, preparePhoto, savePhoto } from "@/lib/catalogue/photos";
 import { removeProduct, upsertProduct, useProducts } from "@/lib/catalogue/store";
 import type { Product } from "@/lib/catalogue/types";
@@ -23,6 +23,8 @@ type PhotoDraft = { id: string; blob?: Blob };
 type ProductFormProps = {
   product?: Product;
   currency: Currency;
+  /** Called after save, cancel or delete so the page can give the next visit a fresh form. */
+  onDone?: () => void;
 };
 
 function inputClass(invalid: boolean) {
@@ -72,7 +74,7 @@ function Field({
   );
 }
 
-export function ProductForm({ product, currency: shopCurrency }: ProductFormProps) {
+export function ProductForm({ product, currency: shopCurrency, onDone }: ProductFormProps) {
   const router = useRouter();
   const products = useProducts() ?? [];
   const t = useMessages().productForm;
@@ -108,6 +110,10 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
     photos: photos.length > 0 ? null : t.errors.photos,
   };
   const visibleError = (error: string | null) => (submitted ? error : null);
+  function finish() {
+    router.push("/products");
+    onDone?.();
+  }
 
   function commitAliases(raw: string) {
     setAliases((current) => mergeAliases(current, raw));
@@ -160,7 +166,7 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
       });
 
       await deletePhotos(removedIds);
-      router.push("/products");
+      finish();
     } catch {
       setSaveError(true);
       setSaving(false);
@@ -171,6 +177,7 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
     if (!product) return;
     router.replace("/products");
     await removeProduct(product.id);
+    onDone?.();
   }
 
   return (
@@ -179,7 +186,7 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
         <button
           type="button"
           aria-label={t.back}
-          onClick={() => router.push("/products")}
+          onClick={finish}
           className="tap-target -ml-2 grid place-items-center rounded-full"
         >
           <ArrowLeft aria-hidden size={22} />
@@ -344,25 +351,32 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
               </li>
             ))}
 
-            {photos.length < MAX_PHOTOS && (
-              <li className="aspect-square">
-                <label className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-control border-2 border-dashed border-line text-sm font-medium text-primary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-primary">
-                  <Plus aria-hidden size={20} />
-                  {t.addPhoto}
-                  {/* No capture attribute, so phones offer both camera and gallery. */}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="sr-only"
-                    onChange={(event) => {
-                      void addPhotos(event.target.files);
-                      event.target.value = "";
-                    }}
-                  />
-                </label>
-              </li>
-            )}
+            {photos.length < MAX_PHOTOS &&
+              (
+                [
+                  { key: "camera", label: t.takePhoto, Icon: Camera, capture: true },
+                  { key: "gallery", label: t.choosePhoto, Icon: ImagePlus, capture: false },
+                ] as const
+              ).map(({ key, label, Icon, capture }) => (
+                <li key={key} className="aspect-square">
+                  <label className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-control border-2 border-dashed border-line text-primary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-primary">
+                    <Icon aria-hidden size={20} />
+                    <span className="px-1 text-center text-xs font-medium">{label}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      // capture opens the rear camera directly; without it the phone offers the gallery.
+                      capture={capture ? "environment" : undefined}
+                      multiple={!capture}
+                      className="sr-only"
+                      onChange={(event) => {
+                        void addPhotos(event.target.files);
+                        event.target.value = "";
+                      }}
+                    />
+                  </label>
+                </li>
+              ))}
           </ul>
 
           {visibleError(errors.photos) ? (
@@ -390,7 +404,7 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
           </button>
           <button
             type="button"
-            onClick={() => router.push("/products")}
+            onClick={finish}
             className="h-12 flex-1 rounded-card border border-line bg-surface font-semibold"
           >
             {t.cancel}
