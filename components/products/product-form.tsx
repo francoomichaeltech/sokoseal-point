@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Camera, ChevronDown, ImagePlus, X } from "lucide-react";
+import { ArrowLeft, Camera, ImagePlus, X } from "lucide-react";
 import { deletePhotos, preparePhoto, savePhoto } from "@/lib/catalogue/photos";
 import { suggestSku } from "@/lib/catalogue/sku";
 import { upsertProduct, useProducts } from "@/lib/catalogue/store";
@@ -12,10 +12,7 @@ import { currencyPrefix, parsePrice, priceToInput, type Currency } from "@/lib/m
 import { ProductPhoto } from "./product-photo";
 
 const MAX_PHOTOS = 5;
-const MAX_ALIASES = 10;
 const NAME_MAX_LENGTH = 60;
-const ALIAS_MAX_LENGTH = 40;
-const HINT_MAX_LENGTH = 120;
 const SKU_PATTERN = /^[A-Z0-9-]{1,20}$/;
 
 // A draft with a blob was picked in this session and is not in IndexedDB yet.
@@ -30,17 +27,6 @@ function inputClass(invalid: boolean) {
   return `mt-2 h-12 w-full rounded-control border bg-surface px-3 text-base focus:border-primary ${
     invalid ? "border-danger" : "border-line"
   }`;
-}
-
-// Adds comma-separated aliases, skipping blanks and case-insensitive duplicates.
-function mergeAliases(current: string[], raw: string): string[] {
-  const next = [...current];
-  for (const part of raw.split(",")) {
-    const value = part.trim().slice(0, ALIAS_MAX_LENGTH);
-    const duplicate = next.some((alias) => alias.toLowerCase() === value.toLowerCase());
-    if (value && !duplicate && next.length < MAX_ALIASES) next.push(value);
-  }
-  return next;
 }
 
 function Field({
@@ -79,20 +65,14 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
   const t = useMessages().productForm;
   // An existing product keeps the currency it was priced in.
   const currency = product?.currency ?? shopCurrency;
-  const editing = product !== undefined;
 
+  const [name, setName] = useState(product?.name ?? "");
+  // null: a new product's SKU follows the name until the merchant types their own.
+  const [skuInput, setSkuInput] = useState<string | null>(product?.sku ?? null);
+  const [price, setPrice] = useState(product ? priceToInput(product.price, product.currency) : "");
   const [photos, setPhotos] = useState<PhotoDraft[]>(
     () => product?.referenceImages.map((id) => ({ id })) ?? [],
   );
-  const [name, setName] = useState(product?.name ?? "");
-  const [price, setPrice] = useState(product ? priceToInput(product.price, product.currency) : "");
-  // null: a new product's SKU follows the name until the merchant types their own.
-  const [skuInput, setSkuInput] = useState<string | null>(product?.sku ?? null);
-  const [aliases, setAliases] = useState<string[]>(product?.aliases ?? []);
-  const [aliasInput, setAliasInput] = useState("");
-  const [visualHint, setVisualHint] = useState(product?.visualHint ?? "");
-  const [active, setActive] = useState(product?.active ?? true);
-  const [moreOpen, setMoreOpen] = useState(false);
 
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -105,17 +85,12 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
   const amount = parsePrice(price, currency);
 
   const errors = {
-    photos: photos.length > 0 ? null : t.errors.photos,
     name: trimmedName ? null : t.errors.name,
-    price: amount === null ? t.errors.price(currency) : null,
     sku: !SKU_PATTERN.test(sku) ? t.errors.sku : otherSkus.includes(sku) ? t.errors.skuTaken : null,
+    price: amount === null ? t.errors.price(currency) : null,
+    photos: photos.length > 0 ? null : t.errors.photos,
   };
   const visibleError = (error: string | null) => (submitted ? error : null);
-
-  function commitAliases(raw: string) {
-    setAliases((current) => mergeAliases(current, raw));
-    setAliasInput("");
-  }
 
   async function addPhotos(files: FileList | null) {
     if (!files) return;
@@ -136,8 +111,6 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitted(true);
-    // The SKU field is folded away; open it so its error can be seen.
-    if (errors.sku) setMoreOpen(true);
     if (amount === null || Object.values(errors).some(Boolean)) return;
 
     setSaving(true);
@@ -158,10 +131,11 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
         name: trimmedName,
         price: amount,
         currency,
-        aliases: mergeAliases(aliases, aliasInput),
+        // Not edited in this form; existing values are kept so nothing is lost.
+        aliases: product?.aliases ?? [],
+        visualHint: product?.visualHint,
+        active: product?.active ?? true,
         referenceImages: photos.map((photo) => photo.id),
-        visualHint: visualHint.trim() || undefined,
-        active,
       });
 
       await deletePhotos(removedIds);
@@ -183,10 +157,58 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
         >
           <ArrowLeft aria-hidden size={22} />
         </button>
-        <h1 className="text-xl font-bold">{editing ? t.editTitle : t.addTitle}</h1>
+        <h1 className="text-xl font-bold">{product ? t.editTitle : t.addTitle}</h1>
       </div>
 
       <form onSubmit={handleSubmit} noValidate className="mt-4 flex flex-col gap-5">
+        <Field id="product-name" label={t.name} error={visibleError(errors.name)}>
+          <input
+            id="product-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            maxLength={NAME_MAX_LENGTH}
+            placeholder={t.namePlaceholder}
+            aria-invalid={Boolean(visibleError(errors.name))}
+            className={inputClass(Boolean(visibleError(errors.name)))}
+          />
+        </Field>
+
+        <Field id="product-sku" label={t.sku} error={visibleError(errors.sku)} help={t.skuHelp}>
+          <input
+            id="product-sku"
+            value={skuInput ?? sku}
+            onChange={(event) => setSkuInput(event.target.value.toUpperCase())}
+            maxLength={20}
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder={t.skuPlaceholder}
+            aria-invalid={Boolean(visibleError(errors.sku))}
+            className={inputClass(Boolean(visibleError(errors.sku)))}
+          />
+        </Field>
+
+        <Field id="product-price" label={t.price} error={visibleError(errors.price)} help={t.priceHelp(currency)}>
+          <div
+            className={`mt-2 flex h-12 items-center overflow-hidden rounded-control border bg-surface focus-within:border-primary ${
+              visibleError(errors.price) ? "border-danger" : "border-line"
+            }`}
+          >
+            <span className="flex h-full items-center border-r border-line bg-canvas px-3 text-sm font-medium text-muted">
+              {currencyPrefix(currency)}
+            </span>
+            <input
+              id="product-price"
+              value={price}
+              onChange={(event) => setPrice(event.target.value)}
+              inputMode={currency === "TZS" ? "numeric" : "decimal"}
+              placeholder={currency === "TZS" ? "6000" : "5.00"}
+              aria-invalid={Boolean(visibleError(errors.price))}
+              className="h-full min-w-0 flex-1 px-3 text-base outline-none"
+            />
+          </div>
+        </Field>
+
         <fieldset>
           <legend className="text-sm font-semibold">{t.photos}</legend>
           <ul className="mt-2 grid grid-cols-3 gap-2">
@@ -244,153 +266,6 @@ export function ProductForm({ product, currency: shopCurrency }: ProductFormProp
             <p className="mt-1.5 text-sm text-muted">{t.photosHelp(photos.length, MAX_PHOTOS)}</p>
           )}
         </fieldset>
-
-        <Field id="product-name" label={t.name} error={visibleError(errors.name)}>
-          <input
-            id="product-name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            maxLength={NAME_MAX_LENGTH}
-            placeholder={t.namePlaceholder}
-            aria-invalid={Boolean(visibleError(errors.name))}
-            className={inputClass(Boolean(visibleError(errors.name)))}
-          />
-        </Field>
-
-        <Field id="product-price" label={t.price} error={visibleError(errors.price)} help={t.priceHelp(currency)}>
-          <div
-            className={`mt-2 flex h-12 items-center overflow-hidden rounded-control border bg-surface focus-within:border-primary ${
-              visibleError(errors.price) ? "border-danger" : "border-line"
-            }`}
-          >
-            <span className="flex h-full items-center border-r border-line bg-canvas px-3 text-sm font-medium text-muted">
-              {currencyPrefix(currency)}
-            </span>
-            <input
-              id="product-price"
-              value={price}
-              onChange={(event) => setPrice(event.target.value)}
-              inputMode={currency === "TZS" ? "numeric" : "decimal"}
-              placeholder={currency === "TZS" ? "6000" : "5.00"}
-              aria-invalid={Boolean(visibleError(errors.price))}
-              className="h-full min-w-0 flex-1 px-3 text-base outline-none"
-            />
-          </div>
-        </Field>
-
-        <div className="rounded-card border border-line bg-surface">
-          <button
-            type="button"
-            aria-expanded={moreOpen}
-            aria-controls="product-more"
-            onClick={() => setMoreOpen((open) => !open)}
-            className="flex h-12 w-full items-center justify-between px-4 text-sm font-semibold"
-          >
-            {t.more}
-            <ChevronDown aria-hidden size={18} className={`transition-transform ${moreOpen ? "rotate-180" : ""}`} />
-          </button>
-
-          {moreOpen && (
-            <div id="product-more" className="flex flex-col gap-5 border-t border-line p-4">
-              <Field id="product-sku" label={t.sku} error={visibleError(errors.sku)} help={t.skuHelp}>
-                <input
-                  id="product-sku"
-                  value={skuInput ?? sku}
-                  onChange={(event) => setSkuInput(event.target.value.toUpperCase())}
-                  maxLength={20}
-                  autoCapitalize="characters"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  placeholder={t.skuPlaceholder}
-                  aria-invalid={Boolean(visibleError(errors.sku))}
-                  className={inputClass(Boolean(visibleError(errors.sku)))}
-                />
-              </Field>
-
-              <Field id="product-aliases" label={t.aliases} help={t.aliasesHelp}>
-                {aliases.length > 0 && (
-                  <ul className="mt-2 flex flex-wrap gap-2">
-                    {aliases.map((alias) => (
-                      <li
-                        key={alias}
-                        className="flex items-center gap-1 rounded-full bg-disabled py-1 pr-1 pl-3 text-sm"
-                      >
-                        {alias}
-                        <button
-                          type="button"
-                          aria-label={t.removeAlias(alias)}
-                          onClick={() => setAliases((current) => current.filter((item) => item !== alias))}
-                          className="grid size-6 place-items-center rounded-full text-muted"
-                        >
-                          <X aria-hidden size={14} />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <input
-                  id="product-aliases"
-                  value={aliasInput}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    if (value.includes(",")) commitAliases(value);
-                    else setAliasInput(value);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      // Enter adds the alias instead of submitting the form.
-                      event.preventDefault();
-                      commitAliases(aliasInput);
-                    }
-                  }}
-                  onBlur={() => commitAliases(aliasInput)}
-                  disabled={aliases.length >= MAX_ALIASES}
-                  maxLength={ALIAS_MAX_LENGTH}
-                  enterKeyHint="done"
-                  placeholder={t.aliasesPlaceholder}
-                  className={inputClass(false)}
-                />
-              </Field>
-
-              <Field id="product-hint" label={t.visualHint}>
-                <input
-                  id="product-hint"
-                  value={visualHint}
-                  onChange={(event) => setVisualHint(event.target.value)}
-                  maxLength={HINT_MAX_LENGTH}
-                  placeholder={t.visualHintPlaceholder}
-                  className={inputClass(false)}
-                />
-              </Field>
-            </div>
-          )}
-        </div>
-
-        {editing && (
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p id="product-active-label" className="text-sm font-semibold">
-                {t.active}
-              </p>
-              <p className="mt-0.5 text-sm text-muted">{t.activeHelp}</p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={active}
-              aria-labelledby="product-active-label"
-              onClick={() => setActive((value) => !value)}
-              className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${active ? "bg-primary" : "bg-line"}`}
-            >
-              <span
-                aria-hidden
-                className={`absolute top-0.5 left-0.5 size-6 rounded-full bg-white shadow-card transition-transform ${
-                  active ? "translate-x-5" : ""
-                }`}
-              />
-            </button>
-          </div>
-        )}
 
         {saveError && (
           <p role="alert" className="text-sm text-danger">
