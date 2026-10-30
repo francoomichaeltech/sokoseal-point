@@ -330,12 +330,17 @@ async function run() {
   console.log(`Action Accuracy:      ${formatPct(metrics.correctActions, metrics.totalActions)}`);
   console.log(`Choose-Product Rate:  ${formatPct(metrics.chooseProductCount, metrics.totalActions)}\n`);
 
+  function formatLatency(medianVal, p90Val) {
+    if (!medianVal && !p90Val) return "N/A (unrecorded in run-hold.ts)";
+    return `${medianVal} ms / ${p90Val} ms`;
+  }
+
   console.log(`--- Latency (ms) [Median / P90] ---`);
-  console.log(`Scan (SAM 3.1):       ${metrics.latencies.scanMedian} ms / ${metrics.latencies.scanP90} ms`);
-  console.log(`Transcribe (Voice):   ${metrics.latencies.transcribeMedian} ms / ${metrics.latencies.transcribeP90} ms`);
-  console.log(`Identify (Spark):     ${metrics.latencies.identifyMedian} ms / ${metrics.latencies.identifyP90} ms`);
-  console.log(`Intent (Spark):       ${metrics.latencies.intentMedian} ms / ${metrics.latencies.intentP90} ms`);
-  console.log(`Total Hold Pipeline:  ${metrics.latencies.totalMedian} ms / ${metrics.latencies.totalP90} ms\n`);
+  console.log(`Scan (SAM 3.1):       ${formatLatency(metrics.latencies.scanMedian, metrics.latencies.scanP90)}`);
+  console.log(`Transcribe (Voice):   ${formatLatency(metrics.latencies.transcribeMedian, metrics.latencies.transcribeP90)}`);
+  console.log(`Identify (Spark):     ${formatLatency(metrics.latencies.identifyMedian, metrics.latencies.identifyP90)}`);
+  console.log(`Intent (Spark):       ${formatLatency(metrics.latencies.intentMedian, metrics.latencies.intentP90)}`);
+  console.log(`Total Hold Pipeline:  ${formatLatency(metrics.latencies.totalMedian, metrics.latencies.totalP90)}\n`);
 
   if (metrics.perHoldResults.length > 0) {
     console.log(`--- Per-Hold Summary (first 10) ---`);

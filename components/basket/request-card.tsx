@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { OutcomeList } from "@/components/camera/outcome-list";
@@ -47,9 +47,15 @@ export function RequestCard() {
   const products = useProducts();
   const t = useMessages();
   const [choices, setChoices] = useState<Choice[]>([]);
+  // Only write to IndexedDB once per hold event, and again only when user choices change
+  const lastWrittenRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (request?.phase !== "ready") return;
+    const writeKey = `${request.eventId}:${JSON.stringify(choices)}`;
+    if (lastWrittenRef.current === writeKey) return;
+    lastWrittenRef.current = writeKey;
+
     const activeProducts = (products ?? []).filter((p) => p.active);
     const outcomes = applyActions(basket?.lines ?? [], request.actions, request.targets, activeProducts, choices).outcomes;
     void recordHoldReady({
@@ -62,7 +68,7 @@ export function RequestCard() {
       marks: request.marks,
       outcomes,
     });
-  }, [request, basket, products, choices]);
+  }, [request, basket?.lines, products, choices]);
 
   if (!request) return null;
 

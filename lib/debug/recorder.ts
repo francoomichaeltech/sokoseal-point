@@ -113,11 +113,15 @@ export function useRecorderEnabled(): boolean {
 
 /** Called when hold starts to record starting timestamp. */
 export function recordHoldStart(eventId: string) {
-  if (!isRecorderEnabled()) return;
-  pendingHolds.set(eventId, {
-    eventId,
-    holdStartMs: performance.now(),
-  });
+  try {
+    if (!isRecorderEnabled()) return;
+    pendingHolds.set(eventId, {
+      eventId,
+      holdStartMs: performance.now(),
+    });
+  } catch (error) {
+    console.warn("[recorder] recordHoldStart error:", error);
+  }
 }
 
 /** Called when hold ends with samples, scan promise and catalogue snapshot. */
@@ -134,31 +138,38 @@ export function recordHoldEnd({
   products: Product[];
   durationMs: number;
 }) {
-  if (!isRecorderEnabled()) return;
-  const existing = pendingHolds.get(eventId) ?? { eventId, holdStartMs: performance.now() - durationMs };
-  existing.holdEndMs = performance.now();
-  existing.durationMs = durationMs;
-  existing.samples = samples;
-  existing.products = products;
+  try {
+    if (!isRecorderEnabled()) return;
+    const existing = pendingHolds.get(eventId) ?? { eventId, holdStartMs: performance.now() - durationMs };
+    existing.holdEndMs = performance.now();
+    existing.durationMs = durationMs;
+    // Strictly preserve original samples without mutation
+    existing.samples = [...samples];
+    existing.products = [...products];
 
-  if (scanPromise) {
-    existing.scanPromise = scanPromise;
-    void scanPromise
-      .then((scan) => {
-        if (scan.frame) {
-          existing.frameUrl = scan.frame.url;
-          existing.frameWidth = scan.frame.width;
-          existing.frameHeight = scan.frame.height;
-        }
-        if (scan.result.status === "OK") {
-          existing.samBoxes = scan.result.boxes;
-          existing.scanMs = scan.result.latencyMs;
-        }
-      })
-      .catch(() => {});
+    if (scanPromise) {
+      existing.scanPromise = scanPromise;
+      // Read-only observation of the existing scan promise
+      void scanPromise
+        .then((scan) => {
+          if (!scan) return;
+          if (scan.frame) {
+            existing.frameUrl = scan.frame.url;
+            existing.frameWidth = scan.frame.width;
+            existing.frameHeight = scan.frame.height;
+          }
+          if (scan.result?.status === "OK") {
+            existing.samBoxes = [...scan.result.boxes];
+            existing.scanMs = scan.result.latencyMs;
+          }
+        })
+        .catch(() => {});
+    }
+
+    pendingHolds.set(eventId, existing);
+  } catch (error) {
+    console.warn("[recorder] recordHoldEnd error:", error);
   }
-
-  pendingHolds.set(eventId, existing);
 }
 
 /** Called when hold finishes processing and results are ready. Persists complete record to IndexedDB. */
@@ -181,74 +192,80 @@ export async function recordHoldReady({
   marks: PointedMark[];
   outcomes: Outcome[];
 }): Promise<void> {
-  if (!isRecorderEnabled()) return;
-  const store = getStore();
-  if (!store) return;
+  try {
+    if (!isRecorderEnabled()) return;
+    const store = getStore();
+    if (!store) return;
 
-  const pending = pendingHolds.get(eventId);
-  const now = performance.now();
+    const pending = pendingHolds.get(eventId);
+    const now = performance.now();
 
-  // If scan promise is still pending, wait for it with a 3s timeout
-  if (pending?.scanPromise && !pending.samBoxes) {
-    try {
-      const scan = await Promise.race([
-        pending.scanPromise,
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
-      ]);
-      if (scan?.frame) {
-        pending.frameUrl = scan.frame.url;
-        pending.frameWidth = scan.frame.width;
-        pending.frameHeight = scan.frame.height;
+    // If scan promise is still pending, wait for it with a 3s timeout
+    if (pending?.scanPromise && !pending.samBoxes) {
+      try {
+        const scan = await Promise.race([
+          pending.scanPromise,
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+        ]);
+        if (scan?.frame) {
+          pending.frameUrl = scan.frame.url;
+          pending.frameWidth = scan.frame.width;
+          pending.frameHeight = scan.frame.height;
+        }
+        if (scan?.result?.status === "OK") {
+          pending.samBoxes = [...scan.result.boxes];
+          pending.scanMs = scan.result.latencyMs;
+        }
+      } catch {
+        // Continue with whatever was captured
       }
-      if (scan?.result?.status === "OK") {
-        pending.samBoxes = scan.result.boxes;
-        pending.scanMs = scan.result.latencyMs;
-      }
-    } catch {
-      // Continue with whatever was captured
     }
-  }
 
-  const identities = marks
-    .filter((mark) => mark.box !== null)
-    .map((mark) => ({
-      box: mark.box!,
-      state: mark.target.state,
-      sku: mark.target.state === "product" ? mark.target.sku : undefined,
-      name: mark.name,
-    }));
+    const identities = marks
+      .filter((mark) => mark.box !== null)
+      .map((mark) => ({
+        box: mark.box!,
+        state: mark.target.state,
+        sku: mark.target.state === "product" ? mark.target.sku : undefined,
+        name: mark.name,
+      }));
 
-  const record: RecordedHold = {
-    id: eventId,
-    createdAt: Date.now(),
-    holdStartMs: pending?.holdStartMs ?? now,
-    holdEndMs: pending?.holdEndMs ?? now,
-    durationMs: pending?.durationMs ?? 0,
-    frameUrl: pending?.frameUrl ?? "",
-    frameWidth: pending?.frameWidth ?? 0,
-    frameHeight: pending?.frameHeight ?? 0,
-    samBoxes: pending?.samBoxes ?? [],
-    samples: pending?.samples ?? [],
-    identities,
-    transcript,
-    heard,
-    intent: {
+    const record: RecordedHold = {
+      id: eventId,
+      createdAt: Date.now(),
+      holdStartMs: pending?.holdStartMs ?? now,
+      holdEndMs: pending?.holdEndMs ?? now,
+      durationMs: pending?.durationMs ?? 0,
+      frameUrl: pending?.frameUrl ?? "",
+      frameWidth: pending?.frameWidth ?? 0,
+      frameHeight: pending?.frameHeight ?? 0,
+      samBoxes: pending?.samBoxes ?? [],
+      samples: pending?.samples ?? [],
+      identities,
       transcript,
-      actions,
-      needsClarification,
-    },
-    pairedTargets: targets,
-    marks,
-    outcomes,
-    products: pending?.products ?? [],
-    latencies: {
-      scanMs: pending?.scanMs,
-      totalMs: pending ? Math.round(now - pending.holdStartMs) : undefined,
-    },
-  };
+      heard,
+      intent: {
+        transcript,
+        actions,
+        needsClarification,
+      },
+      pairedTargets: targets,
+      marks,
+      outcomes,
+      products: pending?.products ?? [],
+      latencies: {
+        scanMs: pending?.scanMs,
+        // Note: transcribeMs and intentMs are omitted because run-hold.ts is in the matching path
+        // and cannot be modified to pass them through. We do not invent or fake them.
+        totalMs: pending ? Math.round(now - pending.holdStartMs) : undefined,
+      },
+    };
 
-  await set(eventId, record, store);
-  pendingHolds.delete(eventId);
+    await set(eventId, record, store);
+    pendingHolds.delete(eventId);
+  } catch (error) {
+    console.warn("[recorder] recordHoldReady error:", error);
+  }
 }
 
 /** Saves user ground truth annotation on a recorded hold. */
