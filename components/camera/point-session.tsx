@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useProducts } from "@/lib/catalogue/store";
+import { recordHoldEnd, recordHoldStart } from "@/lib/debug/recorder";
 import { requestScan } from "@/lib/grounding/scan-client";
 import { captureFrame } from "@/lib/media/capture";
 import { useCamera } from "@/lib/media/use-camera";
@@ -71,8 +72,13 @@ export function PointSession() {
     return () => window.clearInterval(timer);
   }, [cameraStatus, trackerStatus, videoRef, handSeenAtRef]);
 
+  const currentEventIdRef = useRef<string | null>(null);
+
   function handleHoldStart() {
     holdingRef.current = true;
+    const eventId = crypto.randomUUID();
+    currentEventIdRef.current = eventId;
+    recordHoldStart(eventId);
     pointing.begin();
 
     const cached = cacheRef.current;
@@ -94,9 +100,20 @@ export function PointSession() {
     scanRef.current = null;
     if (!recording) return;
 
+    const eventId = currentEventIdRef.current ?? crypto.randomUUID();
+    currentEventIdRef.current = null;
     const catalogue = products ?? [];
+
+    recordHoldEnd({
+      eventId,
+      samples,
+      scanPromise: scan,
+      products: catalogue,
+      durationMs: recording.durationMs,
+    });
+
     void runHold({
-      eventId: crypto.randomUUID(),
+      eventId,
       wav: recording.wav,
       voiceHints: voiceKeywords(catalogue),
       productNames: catalogueKeywords(catalogue),
