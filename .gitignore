@@ -51,6 +51,6 @@ next-env.d.ts
 # raw test clips stay local
 /eval/**/clips/
 
-# raw hold recordings stay local; commit eval documentation and formats only
+# raw hold recordings stay local
 /eval/holds/*.json
 /eval/holds/**/*.json

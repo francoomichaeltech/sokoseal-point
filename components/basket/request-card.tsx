@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { OutcomeList } from "@/components/camera/outcome-list";
@@ -8,10 +8,8 @@ import { useProducts } from "@/lib/catalogue/store";
 import { applyActions, type Choice } from "@/lib/commerce/plan";
 import { applyHold, useBasket } from "@/lib/commerce/store";
 import type { RejectReason } from "@/lib/commerce/types";
-import { recordHoldReady } from "@/lib/debug/recorder";
 import { useMessages } from "@/lib/i18n/locale";
 import { clearRequest, useRequest } from "@/lib/requests/store";
-import { DebugAnnotation } from "./debug-annotation";
 import { PointedChips } from "./pointed-chips";
 import { PointedEvidence } from "./pointed-evidence";
 
@@ -47,28 +45,6 @@ export function RequestCard() {
   const products = useProducts();
   const t = useMessages();
   const [choices, setChoices] = useState<Choice[]>([]);
-  // Only write to IndexedDB once per hold event, and again only when user choices change
-  const lastWrittenRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (request?.phase !== "ready") return;
-    const writeKey = `${request.eventId}:${JSON.stringify(choices)}`;
-    if (lastWrittenRef.current === writeKey) return;
-    lastWrittenRef.current = writeKey;
-
-    const activeProducts = (products ?? []).filter((p) => p.active);
-    const outcomes = applyActions(basket?.lines ?? [], request.actions, request.targets, activeProducts, choices).outcomes;
-    void recordHoldReady({
-      eventId: request.eventId,
-      heard: request.heard,
-      transcript: request.transcript,
-      actions: request.actions,
-      needsClarification: request.needsClarification,
-      targets: request.targets,
-      marks: request.marks,
-      outcomes,
-    });
-  }, [request, basket?.lines, products, choices]);
 
   if (!request) return null;
 
@@ -194,8 +170,6 @@ export function RequestCard() {
         </div>
       )}
       {request.needsClarification && <p className="mt-2 text-sm text-attention">{t.point.intent.unclear}</p>}
-
-      <DebugAnnotation eventId={request.eventId} actions={request.actions} products={products ?? []} />
 
       <div className="mt-4 flex gap-3">
         <button type="button" onClick={clearRequest} className={`border border-line bg-surface ${BUTTON}`}>
