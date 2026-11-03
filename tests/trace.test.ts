@@ -57,4 +57,24 @@ describe("segmentVisits", () => {
     const mugPause = aim("mug", 900, 1400);
     expect(names([...emptyPause, ...mugPause])).toEqual(["none", "mug"]);
   });
+
+  it("keeps five product visits in exact chronological order during a single hold", () => {
+    const fiveBoxes = [
+      { x1: 0.05, y1: 0.1, x2: 0.18, y2: 0.3 },
+      { x1: 0.22, y1: 0.1, x2: 0.35, y2: 0.3 },
+      { x1: 0.4, y1: 0.1, x2: 0.55, y2: 0.3 },
+      { x1: 0.6, y1: 0.1, x2: 0.75, y2: 0.3 },
+      { x1: 0.8, y1: 0.1, x2: 0.95, y2: 0.3 },
+    ];
+    const centers = [0.11, 0.28, 0.47, 0.67, 0.87];
+    const allSamples: TraceSample[] = [];
+    centers.forEach((x, idx) => {
+      const start = idx * 600;
+      for (let at = start; at <= start + 400; at += 100) {
+        allSamples.push(sample(x, 0.38, at, true));
+      }
+    });
+    const visits = segmentVisits(allSamples, fiveBoxes);
+    expect(visits.map((v) => (v.hit.kind === "box" ? fiveBoxes.indexOf(v.hit.box) : -1))).toEqual([0, 1, 2, 3, 4]);
+  });
 });

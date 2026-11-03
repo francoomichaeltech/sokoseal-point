@@ -119,4 +119,19 @@ describe("choices", () => {
     expect(summary(lines)).toEqual(["PEN1 2"]);
     expect(outcomes).toHaveLength(1);
   });
+
+  it("pairs five pointed products and five requests in exact order within one hold", () => {
+    const fiveCatalogue = [
+      product("P1", "Chumvi", 1000, []),
+      product("P2", "Sabuni", 1500, []),
+      product("P3", "Kiberiti", 500, []),
+      product("P4", "Kalamu", 800, []),
+      product("P5", "Kikombe", 2000, []),
+    ];
+    const fiveTargets = ["P1", "P2", "P3", "P4", "P5"].map((sku) => ({ state: "product" as const, sku }));
+    const fiveActions = [1, 2, 3, 1, 4].map((qty) => act("ADD", qty, "POINT"));
+    const { lines, outcomes } = applyActions([], fiveActions, fiveTargets, fiveCatalogue);
+    expect(summary(lines)).toEqual(["P1 1", "P2 2", "P3 3", "P4 1", "P5 4"]);
+    expect(reasons(outcomes)).toEqual(["applied", "applied", "applied", "applied", "applied"]);
+  });
 });

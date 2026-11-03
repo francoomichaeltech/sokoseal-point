@@ -8,7 +8,7 @@ export function keepLongest<T extends { duration: number }>(items: T[], count: n
   const keep = new Set(
     items
       .map((item, index) => ({ index, duration: item.duration }))
-      .sort((a, b) => b.duration - a.duration)
+      .sort((a, b) => b.duration - a.duration || a.index - b.index)
       .slice(0, count)
       .map((item) => item.index),
   );
