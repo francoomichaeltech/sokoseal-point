@@ -77,6 +77,7 @@ export function usePointingSession(videoRef: RefObject<HTMLVideoElement | null>,
         tip,
         direction: { x: (tip.x - base.x) / length, y: (tip.y - base.y) / length },
         hand: aim.hand,
+        fingerLength: length,
       };
     };
 

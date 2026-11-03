@@ -7,8 +7,9 @@ const EDGE_TOLERANCE = 0.01;
 const NESTED_AREA_RATIO = 0.5;
 
 // SAM also detects the pointing hand (or hand and arm). A box that covers most of the
-// tracked hand is treated as the hand and ignored.
+// tracked hand, or sits mostly inside the hand behind the fingertip, is ignored.
 const HAND_COVERAGE = 0.75;
+const BOX_HAND_COVERAGE = 0.55;
 
 const RAY_STEP = 0.01;
 
@@ -48,26 +49,38 @@ export function selectTarget(boxes: Box[], point: Point): Selection {
   return { status: "AMBIGUOUS", boxes: hits };
 }
 
-export function withoutHand(boxes: Box[], hand?: Box): Box[] {
+export function withoutHand(boxes: Box[], hand?: Box, tip?: Point): Box[] {
   const handArea = hand ? area(hand) : 0;
   if (!hand || handArea <= 0) return boxes;
-  return boxes.filter((box) => intersection(box, hand) / handArea < HAND_COVERAGE);
+  return boxes.filter((box) => {
+    const overlap = intersection(box, hand);
+    if (overlap / handArea >= HAND_COVERAGE) return false;
+    const boxArea = area(box);
+    if (boxArea > 0 && overlap / boxArea >= BOX_HAND_COVERAGE && (!tip || !contains(box, tip))) {
+      return false;
+    }
+    return true;
+  });
 }
 
-// Walks from the fingertip towards the frame edge and stops at the first object it meets.
-export function castRay(boxes: Box[], tip: Point, direction: Point): RayHit {
+// Walks from the fingertip along the pointing direction (up to maxDistance when given) and stops at the first object it meets.
+export function castRay(boxes: Box[], tip: Point, direction: Point, maxDistance = Infinity): RayHit {
   const length = Math.hypot(direction.x, direction.y);
   if (!length) return { selection: { status: "NONE" }, at: null };
 
   const step = { x: (direction.x / length) * RAY_STEP, y: (direction.y / length) * RAY_STEP };
 
-  for (let point = tip; isInside(point); point = { x: point.x + step.x, y: point.y + step.y }) {
+  for (
+    let point = tip, travelled = 0;
+     isInside(point) && travelled <= maxDistance + 1e-9;
+    point = { x: point.x + step.x, y: point.y + step.y }, travelled += RAY_STEP
+  ) {
     const selection = selectTarget(boxes, point);
     if (selection.status !== "NONE") return { selection, at: point };
   }
   return { selection: { status: "NONE" }, at: null };
 }
 
-export function selectAlongRay(boxes: Box[], tip: Point, direction: Point, hand?: Box): Selection {
-  return castRay(withoutHand(boxes, hand), tip, direction).selection;
+export function selectAlongRay(boxes: Box[], tip: Point, direction: Point, hand?: Box, maxDistance = Infinity): Selection {
+  return castRay(withoutHand(boxes, hand, tip), tip, direction, maxDistance).selection;
 }

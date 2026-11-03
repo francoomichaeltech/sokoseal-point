@@ -128,6 +128,11 @@ export async function locateTargets(
       const duration = visit.end - visit.start;
       const kf = keyframeForVisit(visit, keyframes);
 
+      if (visit.hit.kind === "none") {
+        marks.push({ target: { state: "none" }, name: null, box: null, duration });
+        continue;
+      }
+
       if (visit.hit.kind === "ambiguous") {
         marks.push({ target: { state: "ambiguous" }, name: null, box: null, duration });
         continue;

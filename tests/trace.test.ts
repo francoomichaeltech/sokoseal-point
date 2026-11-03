@@ -51,4 +51,10 @@ describe("segmentVisits", () => {
     expect(names(table)).toEqual([]);
     expect(names(aim("mug", 0, 200))).toEqual([]);
   });
+
+  it("records a still finger aiming at empty space as a none visit paired in order with product visits", () => {
+    const emptyPause = [0, 150, 300, 450, 600].map((at) => sample(0.45, 0.65, at, true));
+    const mugPause = aim("mug", 900, 1400);
+    expect(names([...emptyPause, ...mugPause])).toEqual(["none", "mug"]);
+  });
 });

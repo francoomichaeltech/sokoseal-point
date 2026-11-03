@@ -19,6 +19,20 @@ describe("resolveDwell", () => {
       box: mug,
     });
   });
+
+  it("caps the finger ray relative to finger length so empty space does not hit a distant product", () => {
+    expect(
+      resolveDwell(
+        [mug],
+        {
+          tip: { x: 0.2, y: 0.85 },
+          direction: { x: 0, y: -1 },
+          hand: { x1: 0.15, y1: 0.85, x2: 0.3, y2: 0.98 },
+          fingerLength: 0.08,
+        },
+      ),
+    ).toEqual({ status: "NONE" });
+  });
 });
 
 describe("nearestBox", () => {

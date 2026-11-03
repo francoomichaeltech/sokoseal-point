@@ -1,7 +1,7 @@
 import type { Box, Point } from "@/lib/grounding/types";
 
 /** Smoothed fingertip, pointing direction and hand bounds in normalized frame coordinates. */
-export type Ray = { tip: Point; direction: Point; hand: Box };
+export type Ray = { tip: Point; direction: Point; hand: Box; fingerLength?: number };
 
 export type Dwell = Ray & { at: number };
 
