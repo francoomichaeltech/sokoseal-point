@@ -26,6 +26,68 @@ function cleanQuantity(value: unknown): number | null {
     : null;
 }
 
+function normalizeSpoken(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function countOccurrences(haystack: string, needle: string): number {
+  if (!haystack || !needle) return 0;
+  let count = 0;
+  let pos = 0;
+  while (pos <= haystack.length - needle.length) {
+    const idx = haystack.indexOf(needle, pos);
+    if (idx === -1) break;
+    count++;
+    pos = idx + needle.length;
+  }
+  return count;
+}
+
+function isSameActionSignature(a: IntentAction, b: IntentAction): boolean {
+  return (
+    a.action === b.action &&
+    a.quantity !== null &&
+    a.quantity === b.quantity &&
+    a.reference === b.reference &&
+    (a.namedProduct ?? "").toLowerCase() === (b.namedProduct ?? "").toLowerCase() &&
+    Boolean(normalizeSpoken(a.spoken)) &&
+    normalizeSpoken(a.spoken) === normalizeSpoken(b.spoken)
+  );
+}
+
+/**
+ * Drops adjacent duplicate actions only when they come from the same spoken words in the transcript,
+ * while keeping genuine repeats such as "hii moja, na hii moja".
+ */
+export function deduplicateActions(actions: IntentAction[], transcript: string): IntentAction[] {
+  const normTranscript = normalizeSpoken(transcript);
+  const result: IntentAction[] = [];
+
+  for (const action of actions) {
+    const prev = result[result.length - 1];
+    if (prev && isSameActionSignature(prev, action)) {
+      const normSpoken = normalizeSpoken(action.spoken);
+      const inTranscript = countOccurrences(normTranscript, normSpoken);
+      const allowedRepeats = Math.max(1, inTranscript);
+      let streak = 0;
+      for (let i = result.length - 1; i >= 0; i--) {
+        if (isSameActionSignature(result[i], action)) streak++;
+        else break;
+      }
+      if (streak >= allowedRepeats) {
+        continue;
+      }
+    }
+    result.push(action);
+  }
+
+  return result;
+}
+
 // Model output is untrusted. A shape error rejects the whole result instead of guessing which part is right.
 export function parseIntent(raw: unknown): Intent | null {
   if (typeof raw !== "object" || raw === null) return null;
@@ -65,5 +127,10 @@ export function parseIntent(raw: unknown): Intent | null {
     });
   }
 
-  return { transcript: transcript.trim().slice(0, MAX_TRANSCRIPT_LENGTH), actions: parsed, needsClarification };
+  const cleanTranscript = transcript.trim().slice(0, MAX_TRANSCRIPT_LENGTH);
+  return {
+    transcript: cleanTranscript,
+    actions: deduplicateActions(parsed, cleanTranscript),
+    needsClarification,
+  };
 }

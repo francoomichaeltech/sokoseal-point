@@ -67,6 +67,41 @@ describe("parseIntent", () => {
   it("rejects output that is not an object", () => {
     expect(parseIntent("ADD 2")).toBeNull();
   });
+
+  it("removes duplicated actions from the same spoken words while keeping genuine repeats", () => {
+    const duplicated = parseIntent(
+      response(
+        [
+          action({ quantity: 2, spoken: "Nipe hii mbili." }),
+          action({ quantity: 2, spoken: "Nipe hii mbili." }),
+        ],
+        { transcript: "Nipe hii mbili." },
+      ),
+    );
+    expect(duplicated?.actions).toHaveLength(1);
+
+    const genuineDistinctSpoken = parseIntent(
+      response(
+        [
+          action({ quantity: 1, spoken: "hii moja" }),
+          action({ quantity: 1, spoken: "na hii moja" }),
+        ],
+        { transcript: "hii moja, na hii moja" },
+      ),
+    );
+    expect(genuineDistinctSpoken?.actions).toHaveLength(2);
+
+    const genuineIdenticalSpoken = parseIntent(
+      response(
+        [
+          action({ quantity: 1, spoken: "hii moja" }),
+          action({ quantity: 1, spoken: "hii moja" }),
+        ],
+        { transcript: "Nipe hii moja, na hii moja." },
+      ),
+    );
+    expect(genuineIdenticalSpoken?.actions).toHaveLength(2);
+  });
 });
 
 describe("intentPrompt", () => {
