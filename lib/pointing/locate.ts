@@ -199,6 +199,32 @@ export async function locateTargets(
       const kf = keyframeForVisit(visit, keyframes);
 
       if (visit.hit.kind === "none") {
+        // If the fingertip paused on a spot where SAM detected no box, check the crop around the fingertip
+        // so the vision model sees whether that spot is empty counter space or contains an object.
+        const inspectFrame = kf ? kf.frame : frame;
+        const inspectTip = kf ? kf.tip : visit.tip;
+        const emptyCheckBox = boxAroundTip(inspectTip);
+        if (products.length > 0) {
+          const [spotIdentity] = await identifyFn(inspectFrame.url, [emptyCheckBox], products);
+          if (spotIdentity?.state === "product") {
+            const spotEvidence: Evidence = {
+              frameUrl: inspectFrame.url,
+              width: inspectFrame.width,
+              height: inspectFrame.height,
+            };
+            if (inspectFrame.url !== frame.url) {
+              extraEvidenceMap.set(inspectFrame.url, spotEvidence);
+            }
+            marks.push({
+              target: fromIdentity(spotIdentity),
+              name: spotIdentity.name,
+              box: emptyCheckBox,
+              duration,
+              evidence: spotEvidence,
+            });
+            continue;
+          }
+        }
         marks.push({ target: { state: "none" }, name: null, box: null, duration });
         continue;
       }

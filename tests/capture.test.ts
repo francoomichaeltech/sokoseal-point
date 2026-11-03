@@ -191,4 +191,32 @@ describe("keyframeForVisit and locateTargets with visit keyframes", () => {
       { state: "product", sku: "KAL1" },
     ]);
   });
+
+  it("crops around the fingertip when SAM found no box on a visit so the model verifies empty space vs product", async () => {
+    const emptyScan: Scan = {
+      result: { status: "OK", boxes: [], latencyMs: 10 },
+      frame: { url: "data:image/jpeg;base64,empty-counter", width: 640, height: 480, score: 10 },
+    };
+    const samples = [
+      { tip: { x: 0.45, y: 0.65 }, direction: { x: 0, y: -1 }, hand: { x1: 0.4, y1: 0.7, x2: 0.5, y2: 0.9 }, at: 0 },
+      { tip: { x: 0.45, y: 0.65 }, direction: { x: 0, y: -1 }, hand: { x1: 0.4, y1: 0.7, x2: 0.5, y2: 0.9 }, at: 200 },
+      { tip: { x: 0.45, y: 0.65 }, direction: { x: 0, y: -1 }, hand: { x1: 0.4, y1: 0.7, x2: 0.5, y2: 0.9 }, at: 400 },
+      { tip: { x: 0.45, y: 0.65 }, direction: { x: 0, y: -1 }, hand: { x1: 0.4, y1: 0.7, x2: 0.5, y2: 0.9 }, at: 600 },
+    ];
+
+    const inspectedBoxes: Box[][] = [];
+    const locatedEmpty = await locateTargets(
+      Promise.resolve(emptyScan),
+      samples,
+      [product],
+      [],
+      async (_url, boxes) => {
+        inspectedBoxes.push(boxes);
+        return [{ state: "unknown" }];
+      },
+    );
+
+    expect(inspectedBoxes).toHaveLength(1);
+    expect(locatedEmpty.marks).toEqual([{ target: { state: "none" }, name: null, box: null, duration: 600 }]);
+  });
 });
