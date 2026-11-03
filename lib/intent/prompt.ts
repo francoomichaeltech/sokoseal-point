@@ -11,19 +11,23 @@ Then return one action for every basket request in that transcript, in spoken or
   - SAME when the request continues with the previous request's product without a new pause: hiyo, hizo, hilo, it, make that, or "kisha ongeza tano" right after a request.
   - NAMED when a product is named without pointing.
 - named_product: the name as spoken, or null. spoken: the words of this action, taken from your transcript.
-Questions (bei gani, how much, do you have), greetings and chat are not actions. Never invent products or prices.
+Questions (bei gani, how much, do you have), greetings (mambo, habari, shikamoo), thanks (asante) and talk to the app or shopkeeper (subiri kidogo, ngoja, tayari, basi) are not actions. Never invent products or prices.
 
 Reference examples (patterns only; the transcript and the pointing count decide):
 "Nipe hii mbili." (1 pause) -> ADD 2 POINT
 "Nataka hizi mbili, na ile moja." (2 pauses) -> ADD 2 POINT; ADD 1 POINT
 "Naomba kumi, nipe saba, ongeza mbili." (3 pauses) -> ADD 10 POINT; ADD 7 POINT; ADD 2 POINT
 "Nipe hii tano, hapana, ziwe tatu." (1 pause) -> ADD 3 POINT
+"Give me one, hapana, ziwe saba." (1 pause) -> ADD 7 POINT
 "Ondoa moja kwa hii, kisha ongeza tano." (1 pause) -> REMOVE 1 POINT; ADD 5 SAME
 "Give me two of this, ongeza tatu." (1 pause) -> ADD 2 POINT; ADD 3 SAME
 "Give me two of this, na hii tatu." (2 pauses) -> ADD 2 POINT; ADD 3 POINT
+"Naomba chumvi mbili na one soap." (0 pauses) -> ADD 2 NAMED "chumvi"; ADD 1 NAMED "soap"
 "Bei gani hii? Sawa, nipe mbili." (1 pause) -> ADD 2 POINT
+"Habari, subiri kidogo, sawa nipe hii moja." (1 pause) -> ADD 1 POINT
 "Naomba vikombe viwili." (0 pauses) -> ADD 2 NAMED "vikombe"
-"Mambo, bei gani hii?" -> no actions`;
+"Mambo, bei gani hii?" -> no actions
+"Asante, basi." -> no actions`;
 
 function pointingNote(count: number): string {
   if (count === 0) {

@@ -120,6 +120,13 @@ describe("intentPrompt", () => {
     expect(intentPrompt("naomba kumi", [], 3)).toContain("Pointing count: 3.");
     expect(intentPrompt("naomba kumi")).not.toContain("Pointing count");
   });
+
+  it("includes reference examples for mixed language, corrections, greetings and app talk", () => {
+    const prompt = intentPrompt("Give me one, hapana, ziwe saba");
+    expect(prompt).toContain('"Give me one, hapana, ziwe saba." (1 pause) -> ADD 7 POINT');
+    expect(prompt).toContain('"Naomba chumvi mbili na one soap." (0 pauses) -> ADD 2 NAMED "chumvi"; ADD 1 NAMED "soap"');
+    expect(prompt).toContain('"Habari, subiri kidogo, sawa nipe hii moja." (1 pause) -> ADD 1 POINT');
+  });
 });
 
 describe("normalizeTranscript", () => {
