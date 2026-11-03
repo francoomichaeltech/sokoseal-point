@@ -77,7 +77,7 @@ Judges and developers can run and test SokoSeal Point locally or on a mobile pho
 
 ### Prerequisites
 
-- **Node.js**: v20 or newer (`npm` v10+)
+- **Node.js**: 20.9 or newer (required by Next.js 16)
 - **Meta Model API Key**: An active key with access to `sam-3.1`, `muse-voice-transcribe-1.0`, and `muse-spark-1.3`
 
 ### 1. Clone and Install Dependencies
@@ -88,7 +88,7 @@ cd sokoseal-point
 npm install
 ```
 
-Note: `npm install` automatically runs `scripts/copy-mediapipe.mjs` (`postinstall`), which copies the MediaPipe WebAssembly runtime files from `node_modules/@mediapipe/tasks-vision/wasm` into `public/mediapipe/wasm` so hand tracking loads locally without external WASM CDN dependencies.
+Note: `npm install` automatically runs `scripts/copy-mediapipe.mjs` (`postinstall`), which copies the MediaPipe WebAssembly runtime files from `node_modules/@mediapipe/tasks-vision/wasm` into `public/mediapipe` so the app serves them from its own origin.
 
 ### 2. Configure Your Meta Model API Key (`.env.local`)
 
@@ -123,20 +123,20 @@ npm run dev
 ```
 
 - **On a desktop browser**: Opening `http://localhost:3000` displays the **Desktop Handoff** screen with a language toggle (`English` / `Kiswahili`) and a scannable QR code for opening the app on a phone.
-- **On a mobile phone ( or mobile device emulator)**: Open `http://localhost:3000` (via USB port-forwarding `adb reverse tcp:3000 tcp:3000` or an HTTPS tunnel) to access the full camera and microphone workflow. Note that mobile browsers require either `localhost` or `https://` to grant `getUserMedia` camera and microphone permissions.
+- **On a mobile phone**: Open the app over `localhost` (for example with Android USB port forwarding: `adb reverse tcp:3000 tcp:3000`) or over HTTPS (for example a Vercel deployment with `MODEL_API_KEY` set as a server environment variable). Mobile browsers only grant camera and microphone access on `localhost` or `https://`.
 
 ---
 
 ## Step-by-Step Phone Testing Guide
 
 1. **One-Time Shop Setup (`/setup`)**:
-   - Enter a shop name (for example, `Duka la Michael`), select your interface language (`English` or `Kiswahili`), and choose your currency (`TZS`, `KES`, `UGX`, or `USD`). Currency is locked once set so basket totals remain consistent.
+   - Enter a shop name (for example, `Duka la Michael`), select your interface language (`English` or `Kiswahili`), and choose your currency (`TZS` or `USD`). Currency is locked once the shop has products so basket totals remain consistent.
 2. **Add Catalogue Products (`/products` -> `/products/new`)**:
    - Add 3 to 4 real physical items you have in front of you (for example: `Chumvi` at `500`, `Sabuni` at `1500`, `Mafuta ya Family Care` at `1300`, `Kikombe` at `500`).
    - Capture **2 to 3 clear reference photos** of each item from slightly different angles against your counter surface, and optionally add spoken aliases (for example, `Salt`, `Soap`, `Cup`) or a short visual distinguishing note.
 3. **Arrange the Counter and Open Point (`/point`)**:
    - Place your catalogue items on a well-lit surface with `4–6 cm` of spacing between items, plus one non-shop object (such as a phone charger or pen) and an area of empty counter space.
-   - Let the camera view the counter **without your hand in frame for 1–2 seconds** first. SokoSeal Point automatically captures the sharpest unobstructed counter frame and runs `sam-3.1` in the background (`Ready to point`).
+   - Let the camera view the counter **without your hand in frame for 1–2 seconds** first. SokoSeal Point automatically captures the sharpest unobstructed counter frame and runs `sam-3.1` in the background.
 4. **Hold to Point and Speak**:
    - **Multi-item pointing**: Press and hold the microphone button, point your index fingertip at the first item for ~1 second, move to the second item for ~1 second, and say `"Nipe hii mbili, na hii moja"`. Release the button.
    - **Code-switching and self-correction**: Hold the button, point at an item, and say `"Give me one, hapana, ziwe tatu, na kikombe moja"`. Release the button.
@@ -175,11 +175,11 @@ sokoseal-point/
 │   ├── setup/page.tsx          # First-run shop onboarding (name, language, currency)
 │   ├── globals.css             # Design tokens and mobile viewport utilities
 │   ├── layout.tsx              # Root layout and DeviceGate wrapper
-│   └── page.tsx                # Entry redirect (/setup -> /products -> /point)
+│   └── page.tsx                # Entry redirect (/setup for a new shop, otherwise /products)
 ├── components/
-│   ├── basket/                 # RequestCard, PointedEvidence, PointedChips, ProofSheet, SealedView
-│   ├── camera/                 # PointSession, HoldButton, StatusPill, OutcomeList
-│   ├── products/               # ProductForm, PhotoSlot
+│   ├── basket/                 # RequestCard, PointedEvidence, PointedChips, BasketLines, ProofPanel, SealedView, ActionBar
+│   ├── camera/                 # PointSession, CameraView, HoldToSpeak, PointTips, OutcomeList
+│   ├── products/               # ProductForm, ProductCard, ProductPhoto
 │   ├── shop/                   # ShopGate route guard
 │   └── ui/                     # AppHeader, BottomNav, DesktopHandoff, DeviceGate, LanguageSwitch
 ├── docs/
@@ -197,9 +197,10 @@ sokoseal-point/
 │   ├── pointing/               # Hand tracker, One-Euro filter, resolveDwell(), segmentVisits(), locateTargets()
 │   ├── requests/               # In-memory hold request lifecycle (runHold.ts, store.ts)
 │   ├── shop/                   # Shop configuration store
+│   ├── storage/                # Local persistence helpers
 │   └── voice/                  # Catalogue-prioritized ASR keyword builder
 ├── scripts/
-│   └── copy-mediapipe.mjs      # Copies MediaPipe WASM binaries to public/mediapipe/wasm
+│   └── copy-mediapipe.mjs      # Copies MediaPipe WASM binaries to public/mediapipe
 └── tests/                      # 18 Vitest test suites (118 unit and integration tests)
 ```
 
@@ -221,7 +222,7 @@ All `18` test files (`118` tests) run deterministically offline in Vitest:
 - `tests/trace.test.ts`, `tests/dwell.test.ts`, & `tests/fit.test.ts`: Chronological multi-visit trace segmentation, empty-space dwell detection, and pass-over visit pruning.
 - `tests/capture.test.ts`: Sharpness/exposure frame scoring, scan retry/fallback, in-hold pre-identification caching, single-photo `sceneMarks` labelling, and strict empty-space preservation.
 - `tests/identity.test.ts`: Multimodal prompt formatting, scene context inclusion, and strict SKU validation against catalogue references.
-- `tests/intent.test.ts` & `tests/voice-keywords.test.ts`: Kiswahili/English numeral and typo normalization (`"wani soap"`, `"adi ten"`, `"namba tatu"`), self-corrections, duplicate-action filtering, and local fallback intent parsing.
+- `tests/intent.test.ts` & `tests/voice-keywords.test.ts`: Kiswahili/English numeral and mishearing normalization (`"wani soap"`, `"adi ten"` to `"add ten"`, `"namba tatu"` to `"naomba tatu"`), self-corrections, duplicate-action filtering, and local fallback intent parsing.
 - `tests/commerce.test.ts`, `tests/commerce-targets.test.ts`, & `tests/changes.test.ts`: Safe basket planning (`ADD`, `REMOVE`, `SET`), `not_in_shop` and `nothing_pointed` rejections, and user confirmation tracking.
 - `tests/catalogue-transfer.test.ts` & `tests/sku.test.ts`: Catalogue JSON export/import validation and SKU reservation rules.
 

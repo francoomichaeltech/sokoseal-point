@@ -49,14 +49,14 @@ Phone Camera & Microphone
 
 | Directory | Files | Responsibility |
 | :--- | :--- | :--- |
-| `app/api/scan/` | `route.ts` | Validates same-origin and JPEG data URL (`<= 900 KB`), invokes `sam-3.1` with concept `"object"`, and parses normalized bounding boxes. |
-| `app/api/identify/` | `route.ts` | Validates up to `20` target crops, up to `50` catalogue products (`<= 3` reference images each), and optional full-scene image; invokes `muse-spark-1.3`. |
-| `app/api/transcribe/` | `route.ts` | Validates multipart `WAV` upload (`44 bytes` to `10 MB`) and up to `80` keyword hints (`<= 40` chars each); invokes `muse-voice-transcribe-1.0`. |
-| `app/api/intent/` | `route.ts` | Validates transcript (`<= 500` chars), product names (`<= 200`), and `pointCount` (`0..20`); invokes `muse-spark-1.3` with strict JSON schema. |
+| `app/api/scan/` | `route.ts` | Validates same-origin and a JPEG data URL (up to `3,000,000` characters), invokes `sam-3.1` with concept `"object"`, and parses normalized bounding boxes. |
+| `app/api/identify/` | `route.ts` | Validates up to `20` target crops, up to `50` catalogue products (`<= 3` reference images each, each image up to `300,000` characters), and an optional full-scene image; invokes `muse-spark-1.3`. |
+| `app/api/transcribe/` | `route.ts` | Validates a `WAV` upload (up to `4 MB`) and up to `50` keyword hints (`<= 40` characters each); invokes `muse-voice-transcribe-1.0`. |
+| `app/api/intent/` | `route.ts` | Validates the transcript (`<= 3,000` characters), up to `50` product names (`<= 40` characters each), and `pointCount` (`0..20`); invokes `muse-spark-1.3` with a strict JSON schema. |
 | `lib/grounding/` | `parse.ts`, `select.ts`, `types.ts` | Parses SAM coordinate tokens, filters background/noise boxes (`cleanBoxes`), selects distinct counter objects for single-photo labelling (`selectSceneBoxes`), and casts rays (`castRay`). |
 | `lib/pointing/` | `hand-tracker.ts`, `gesture.ts`, `one-euro.ts`, `resolve.ts`, `trace.ts`, `fit.ts`, `locate.ts`, `use-pointing-session.ts` | Runs MediaPipe hand tracking, extracts smoothed index-finger rays, resolves each sample to a box or empty space, segments chronological visits, and maps visits to catalogue identities. |
 | `lib/identity/` | `prompt.ts`, `validate.ts`, `adapter.ts`, `client.ts`, `identify-targets.ts` | Crops counter objects (`448 px`) and full scene context (`512 px`), compares against cached `320 px` reference crops, and validates returned SKUs. |
-| `lib/voice/` | `keywords.ts`, `client.ts`, `types.ts` | Prioritizes shop product names and aliases ahead of bilingual retail vocabulary within the `80`-keyword limit. |
+| `lib/voice/` | `keywords.ts`, `client.ts`, `types.ts` | Prioritizes shop product names and aliases ahead of bilingual retail vocabulary within the `50`-keyword limit. |
 | `lib/intent/` | `normalize.ts`, `prompt.ts`, `validate.ts`, `adapter.ts`, `client.ts` | Normalizes spoken Kiswahili/English numerals and ASR typos, prompts `muse-spark-1.3`, provides a deterministic local fallback parser (`fallbackParseIntent`), and deduplicates actions. |
 | `lib/commerce/` | `plan.ts`, `targets.ts`, `changes.ts`, `store.ts`, `types.ts` | Matches `POINT`, `SAME`, and `NAMED` actions to catalogue SKUs, enforces quantity/stock rules, records user overrides, and manages basket state. |
 | `lib/catalogue/` | `store.ts`, `sku.ts`, `photos.ts`, `references.ts`, `transfer.ts` | Persists product metadata in `localStorage` and reference photos in `IndexedDB`, generates unambiguous SKUs, and validates JSON export/import bundles. |
@@ -71,10 +71,10 @@ Phone Camera & Microphone
    - Every candidate camera frame is evaluated on a `96 px` luminance grid using Laplacian variance (sharpness) and mean luminance exposure balance (`scoreFrameQuality`).
    - `pickBestFrame` selects the highest-scoring frame from the rolling pre-hand buffer so motion-blurred or shadowed frames are rejected before calling `sam-3.1`.
 2. **Background Scan and Scene-Change Refresh (`components/camera/point-session.tsx`)**:
-   - While no hand is visible in the viewfinder, `PointSession` maintains a fresh background scan every `3 seconds` and computes an `8 x 8` luminance signature (`frameSignature`, `signatureDistance >= 14`). If the camera moves or products are rearranged on the counter, a new scan is triggered automatically.
-   - If the user presses the microphone button before a background scan completes, `scanWithFallback` captures the sharpest frame immediately, retries once on transient error, and falls back to the newest cached scan.
+   - Every `700 ms`, once no hand has been seen for `700 ms`, `PointSession` adds the latest frame to a buffer of the `4` most recent frames and compares a small thumbnail of the counter with the thumbnail of the cached scan. A new scan of the sharpest buffered frame is requested when the scene difference reaches `SCENE_CHANGE = 8` or the cached scan is older than `8 s`, so moving the camera or rearranging products refreshes the boxes.
+   - If the user presses the microphone button before a background scan is available, `scanWithFallback` captures a frame immediately, retries once on transient error, and falls back to the newest cached scan.
 3. **Complete Per-Hold State Isolation**:
-   - As soon as a hold finishes (`stopHold` in `components/camera/point-session.tsx`), `scanRef.current`, `scanPromiseRef.current`, `scanSignatureRef.current`, `identityCacheRef.current`, and `recentFramesRef.current` are cleared. No images or object identities from a previous hold ever carry over into the next hold.
+   - As soon as a hold ends (`handleHoldEnd` in `components/camera/point-session.tsx`), `scanRef`, `cacheRef`, `identityCacheRef`, and `recentFramesRef` are cleared. No counter photo or object identity from a previous hold carries over into the next hold.
 
 ### 3.2 Pointing Geometry and Visit Segmentation
 
@@ -101,9 +101,9 @@ Phone Camera & Microphone
 
 1. **Deterministic Transcript Normalization (`lib/intent/normalize.ts`)**:
    - Before intent extraction, `normalizeTranscript(transcript, productNames)` applies deterministic word-level and phrase-level replacements:
-     - Bilingual action phrases and ASR collisions: `"adi ten"` -> `"add 10"`, `"namba tatu"` -> `"3"`, `"nipee"` / `"hiipe"` -> `"nipe"`, `"naombaa"` -> `"naomba"`, `"giv me"` -> `"give me"`, `" hapana "` self-correction preservation.
-     - SpokenKiswahili and English numerals (`moja`/`wani` -> `1`, `mbili`/`tuu` -> `2`, `tatu` -> `3`, up to `kumi`/`ten` -> `10`).
-     - Fuzzy product-name token alignment (Levenshtein distance `<= 1` for tokens `>= 4` chars, plus Kiswahili `ki-`/`vi-` singular/plural stem matching) against the shop's active product names and aliases.
+     - Common speech-to-text mishearings: `"Hiipe"`, `"nipee"`, `"nipeni"`, `"nipie"` to `"nipe"`; `"namba tatu"` to `"naomba tatu"`; `"adi ten"` / `"adi teni"` to `"add ten"`; `"give me tu"` to `"give me two"`.
+     - Spoken Kiswahili and English numerals (`moja` / `wani` = `1`, `mbili` = `2`, `tatu` = `3`, up to `kumi` / `ten` = `10`) via `parseSpokenNumber`.
+     - Product-name matching against the shop's active names and aliases using Kiswahili and English singular/plural forms (`ki`/`vi`, `ch`/`vy`, `m`/`mi`, `-s`, `-es`, `-ies`), plus a single-character mishearing allowance for words of at least `5` characters that share the first letter.
    - `formatTranscript(text)` formats the displayed quote with clean capitalization, single spacing, and terminal punctuation.
 2. **Resilient Intent Extraction (`lib/intent/adapter.ts` & `lib/requests/run-hold.ts`)**:
    - `extractIntent` calls `muse-spark-1.3` with a strict JSON schema (`ADD`, `REMOVE`, `SET`; `POINT`, `SAME`, `NAMED`), retrying once on transient failure.
