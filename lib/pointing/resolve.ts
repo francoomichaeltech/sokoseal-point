@@ -3,7 +3,7 @@ import type { Box, Point, Selection } from "@/lib/grounding/types";
 import type { Ray } from "./dwell";
 
 // A fingertip on or right next to a product decides before casting the ray.
-export const TOUCH_LIMIT = 0.025;
+export const TOUCH_LIMIT = 0.04;
 // Spike 01: pointing often lands just beside the product, so a near miss still counts.
 export const NEAREST_LIMIT = 0.068;
 // Two objects whose distances differ by less than this are equally likely targets.
@@ -49,7 +49,7 @@ export function nearestBox(boxes: Box[], point: Point, limit = NEAREST_LIMIT): S
 // A fingertip on or right next to a product decides before the ray; equally close candidates are
 // ambiguous, not guessed. Otherwise follows the finger up to a distance proportional to finger length.
 export function resolveDwell(boxes: Box[], ray: Ray): Selection {
-  const candidates = withoutHand(boxes, ray.hand, ray.tip);
+  const candidates = withoutHand(boxes, ray.hand);
 
   const direct = selectTarget(candidates, ray.tip);
   const adjacent = nearestBox(candidates, ray.tip, TOUCH_LIMIT);

@@ -57,6 +57,19 @@ describe("resolveDwell", () => {
       }).status,
     ).toBe("AMBIGUOUS");
   });
+
+  it("resolves to a non-shop object right next to the fingertip even when the hand box overlaps the object and the ray slants toward a distant product", () => {
+    const distantPen = { x1: 0.37, y1: 0.32, x2: 0.41, y2: 0.46 };
+    const nearUnknownObject = { x1: 0.47, y1: 0.51, x2: 0.57, y2: 0.6 };
+    const overlappingHand = { x1: 0.48, y1: 0.48, x2: 0.73, y2: 0.7 };
+    expect(
+      resolveDwell([distantPen, nearUnknownObject], {
+        tip: { x: 0.584, y: 0.484 },
+        direction: { x: -0.87, y: -0.49 },
+        hand: overlappingHand,
+      }),
+    ).toEqual({ status: "MATCH", box: nearUnknownObject });
+  });
 });
 
 describe("nearestBox", () => {

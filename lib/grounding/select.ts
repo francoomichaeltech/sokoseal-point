@@ -7,9 +7,8 @@ const EDGE_TOLERANCE = 0.01;
 const NESTED_AREA_RATIO = 0.5;
 
 // SAM also detects the pointing hand (or hand and arm). A box that covers most of the
-// tracked hand, or sits mostly inside the hand behind the fingertip, is ignored.
+// tracked hand is ignored.
 const HAND_COVERAGE = 0.75;
-const BOX_HAND_COVERAGE = 0.55;
 const MIN_BOX_SIDE = 0.015;
 const MIN_BOX_AREA = 0.001;
 const MAX_BOX_AREA = 0.55;
@@ -92,18 +91,10 @@ export function selectTarget(boxes: Box[], point: Point): Selection {
   return { status: "AMBIGUOUS", boxes: hits };
 }
 
-export function withoutHand(boxes: Box[], hand?: Box, tip?: Point): Box[] {
+export function withoutHand(boxes: Box[], hand?: Box): Box[] {
   const handArea = hand ? area(hand) : 0;
   if (!hand || handArea <= 0) return boxes;
-  return boxes.filter((box) => {
-    const overlap = intersection(box, hand);
-    if (overlap / handArea >= HAND_COVERAGE) return false;
-    const boxArea = area(box);
-    if (boxArea > 0 && overlap / boxArea >= BOX_HAND_COVERAGE && (!tip || !contains(box, tip))) {
-      return false;
-    }
-    return true;
-  });
+  return boxes.filter((box) => intersection(box, hand) / handArea < HAND_COVERAGE);
 }
 
 // Walks from the fingertip along the pointing direction (up to maxDistance when given) and stops at the first object it meets.
@@ -125,5 +116,5 @@ export function castRay(boxes: Box[], tip: Point, direction: Point, maxDistance 
 }
 
 export function selectAlongRay(boxes: Box[], tip: Point, direction: Point, hand?: Box, maxDistance = Infinity): Selection {
-  return castRay(withoutHand(boxes, hand, tip), tip, direction, maxDistance).selection;
+  return castRay(withoutHand(boxes, hand), tip, direction, maxDistance).selection;
 }
