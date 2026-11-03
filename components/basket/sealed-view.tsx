@@ -56,10 +56,13 @@ export function SealedView({ basket }: { basket: Basket }) {
           confirmLabel={t.clearYes}
           cancelLabel={t.cancel}
           onConfirm={() => {
-            startNewBasket();
-            clearRequest();
             setConfirming(false);
+            // Navigate first, then clear the sealed basket so the empty basket never flashes before Point.
             router.push("/point");
+            window.setTimeout(() => {
+              startNewBasket();
+              clearRequest();
+            }, 120);
           }}
           onCancel={() => setConfirming(false)}
         />

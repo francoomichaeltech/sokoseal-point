@@ -45,7 +45,7 @@ export function ProductCard({ product, onDelete }: ProductCardProps) {
           type="button"
           // A new URL per press, so a kept-alive form always loads the saved values.
           onClick={() => router.push(`/products/edit?id=${encodeURIComponent(product.id)}&s=${Date.now()}`)}
-          className="flex h-10 items-center justify-center gap-1.5 rounded-control border border-line text-sm font-medium"
+          className="flex h-11 items-center justify-center gap-1.5 rounded-control border border-line text-sm font-medium"
         >
           <Pencil aria-hidden size={16} />
           {t.edit}
@@ -53,7 +53,7 @@ export function ProductCard({ product, onDelete }: ProductCardProps) {
         <button
           type="button"
           onClick={onDelete}
-          className="flex h-10 items-center justify-center gap-1.5 rounded-control border border-line text-sm font-medium text-danger"
+          className="flex h-11 items-center justify-center gap-1.5 rounded-control border border-line text-sm font-medium text-danger"
         >
           <Trash2 aria-hidden size={16} />
           {t.delete}

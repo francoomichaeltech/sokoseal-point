@@ -23,9 +23,19 @@ export default function BasketPage() {
   const t = useMessages().basket;
   const [sealing, setSealing] = useState(false);
   const [removing, setRemoving] = useState<BasketLine | null>(null);
+  const [leavingToPoint, setLeavingToPoint] = useState(false);
 
-  if (!basket) return null;
+  if (!basket) {
+    return (
+      <div className="flex flex-col gap-4 py-2" aria-busy="true">
+        <div className="h-8 w-28 rounded-control bg-line/60" />
+        <div className="h-6 w-full rounded-control bg-line/40" />
+        <div className="h-36 rounded-card border border-line bg-surface" />
+      </div>
+    );
+  }
   if (basket.sealedAt !== null) return <SealedView basket={basket} />;
+  if (leavingToPoint) return null;
 
   const lines = basket.lines;
   const hasLines = lines.length > 0;
@@ -35,10 +45,19 @@ export default function BasketPage() {
 
   function confirmRemove() {
     if (!removing) return;
-    const emptied = removeLine(removing.sku);
+    const sku = removing.sku;
+    const willBeEmpty = lines.length === 1 && !request;
     setRemoving(null);
-    // Nothing left to review: back to pointing, unless a new request is still waiting here.
-    if (emptied && !request) router.push("/point");
+    if (willBeEmpty) {
+      // Navigate first, then clear the last line so the empty basket never flashes before Point.
+      setLeavingToPoint(true);
+      router.push("/point");
+      window.setTimeout(() => {
+        removeLine(sku);
+      }, 120);
+      return;
+    }
+    removeLine(sku);
   }
 
   return (

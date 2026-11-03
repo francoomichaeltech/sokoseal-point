@@ -9,6 +9,7 @@ import { applyActions, type Choice } from "@/lib/commerce/plan";
 import { applyHold, useBasket } from "@/lib/commerce/store";
 import type { RejectReason } from "@/lib/commerce/types";
 import { useMessages } from "@/lib/i18n/locale";
+import { formatMoney } from "@/lib/money";
 import { clearRequest, useRequest } from "@/lib/requests/store";
 import { PointedChips } from "./pointed-chips";
 import { PointedEvidence } from "./pointed-evidence";
@@ -66,8 +67,10 @@ export function RequestCard() {
         <button
           type="button"
           onClick={() => {
-            clearRequest();
             router.push("/point");
+            window.setTimeout(() => {
+              clearRequest();
+            }, 120);
           }}
           className={`mt-3 w-full border border-line bg-surface ${BUTTON}`}
         >
@@ -155,24 +158,29 @@ export function RequestCard() {
             <div key={outcome.index} className="rounded-control border border-attention/40 bg-attention-soft p-3">
               <p className="text-sm font-semibold">
                 {t.basket.choose} · {t.point.intent.actions[outcome.action]}{" "}
-                {outcome.quantity ?? (outcome.action === "REMOVE" ? t.point.intent.all : "?")}
+                <span data-qty>
+                  {outcome.quantity ?? (outcome.action === "REMOVE" ? t.point.intent.all : "?")}
+                </span>
               </p>
               <p className="truncate text-xs text-muted">“{outcome.spoken}”</p>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2.5 flex flex-col gap-1.5">
                 {active.map((product) => (
                   <button
                     key={product.sku}
                     type="button"
                     onClick={() => choose(outcome.index, product.sku)}
-                    className="h-10 rounded-full border border-line bg-surface px-4 text-sm font-medium"
+                    className="flex min-h-11 w-full items-center justify-between rounded-control border border-line bg-surface px-3.5 py-2 text-left text-sm font-medium"
                   >
-                    {product.name}
+                    <span className="truncate font-semibold">{product.name}</span>
+                    <span data-money className="shrink-0 text-xs text-muted">
+                      {formatMoney(product.price, product.currency)}
+                    </span>
                   </button>
                 ))}
                 <button
                   type="button"
                   onClick={() => choose(outcome.index, null)}
-                  className="h-10 rounded-full px-4 text-sm font-medium text-muted"
+                  className="flex min-h-11 w-full items-center justify-center rounded-control border border-line/70 bg-canvas px-3.5 text-sm font-medium text-muted"
                 >
                   {t.basket.skip}
                 </button>

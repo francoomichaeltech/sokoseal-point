@@ -11,7 +11,14 @@ export function PointStage() {
   const products = useProducts();
   const t = useMessages().point.empty;
 
-  if (!products) return null;
+  if (!products) {
+    return (
+      <div className="mx-auto flex h-full max-w-md flex-col gap-4 p-4" aria-busy="true">
+        <div className="min-h-0 flex-1 rounded-card bg-ink/90" />
+        <div className="mx-auto size-18 rounded-full bg-primary/30" />
+      </div>
+    );
+  }
 
   // Nothing to match against, so the camera is not started.
   if (!products.some((product) => product.active)) {

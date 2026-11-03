@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Box, LocateFixed, ShoppingCart } from "lucide-react";
 import { useMessages } from "@/lib/i18n/locale";
 import { useBasket } from "@/lib/commerce/store";
@@ -14,9 +15,17 @@ const items = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const t = useMessages();
   const basket = useBasket();
   const basketCount = basket?.lines.reduce((sum, line) => sum + line.quantity, 0) ?? 0;
+
+  useEffect(() => {
+    router.prefetch("/products");
+    router.prefetch("/point");
+    router.prefetch("/basket");
+    router.prefetch("/settings");
+  }, [router]);
 
   return (
     <nav
@@ -29,6 +38,7 @@ export function BottomNav() {
 
           const linkProps = {
             href,
+            prefetch: true,
             "aria-current": active ? ("page" as const) : undefined,
             className: `relative flex h-full flex-col items-center justify-center gap-1 text-xs font-medium ${
               active ? "text-primary" : "text-ink"

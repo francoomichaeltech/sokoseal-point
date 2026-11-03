@@ -17,7 +17,7 @@ export function BasketLines({ lines, readOnly = false, onRemove }: BasketLinesPr
   const t = useMessages().basket;
   const currency = lines[0]?.currency;
   const total = lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
-  const stepButton = "grid size-9 place-items-center rounded-full";
+  const stepButton = "grid size-11 place-items-center rounded-full";
 
   return (
     <section className="overflow-hidden rounded-card border border-line bg-surface">

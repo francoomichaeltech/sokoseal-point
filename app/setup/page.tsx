@@ -25,7 +25,25 @@ export default function SetupPage() {
     if (shop) router.replace("/products");
   }, [shop, router]);
 
-  if (shop !== null) return null;
+  if (shop !== null) {
+    return (
+      <>
+        <AppHeader />
+        <main
+          aria-busy="true"
+          className="mx-auto flex min-h-[calc(100dvh-var(--header-height))] max-w-md flex-col gap-6 px-4 pt-6 pb-safe"
+        >
+          <div className="h-8 w-48 rounded-control bg-line/60" />
+          <div className="h-12 w-full rounded-control bg-surface border border-line" />
+          <div className="h-12 w-full rounded-control bg-surface border border-line" />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="h-24 rounded-card border border-line bg-surface" />
+            <div className="h-24 rounded-card border border-line bg-surface" />
+          </div>
+        </main>
+      </>
+    );
+  }
 
   const trimmedName = name.trim();
   const nameError = submitted && !trimmedName;

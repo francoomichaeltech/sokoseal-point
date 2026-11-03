@@ -97,7 +97,7 @@
   position: relative;
   width: 100%;
   overflow: hidden;
-  background-color: #000;
+  background-color: var(--color-ink);
   /* Disables double-tap zoom so taps register immediately as Direct Point. */
   touch-action: manipulation;
 }

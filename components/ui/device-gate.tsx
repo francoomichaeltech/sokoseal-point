@@ -33,6 +33,8 @@ export function DeviceGate({ children }: { children: ReactNode }) {
     if (isDesktop === false) loadHandLandmarker().catch(() => {});
   }, [isDesktop]);
 
-  if (isDesktop === null) return null;
+  if (isDesktop === null) {
+    return <div className="min-h-dvh bg-canvas" aria-busy="true" />;
+  }
   return isDesktop ? <DesktopHandoff /> : children;
 }

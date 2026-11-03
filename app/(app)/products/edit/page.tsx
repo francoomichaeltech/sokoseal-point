@@ -17,7 +17,19 @@ function EditProduct() {
   const shop = useShop();
   const t = useMessages().productForm;
 
-  if (!products || !shop) return null;
+  if (!products || !shop) {
+    return (
+      <div className="flex flex-col gap-5 py-2" aria-busy="true">
+        <div className="h-8 w-40 rounded-control bg-line/60" />
+        <div className="h-12 rounded-control border border-line bg-surface" />
+        <div className="h-12 rounded-control border border-line bg-surface" />
+        <div className="grid grid-cols-3 gap-2">
+          <div className="aspect-square rounded-control border border-line bg-surface" />
+          <div className="aspect-square rounded-control border border-line bg-surface" />
+        </div>
+      </div>
+    );
+  }
 
   const product = products.find((item) => item.id === id);
   if (!product) {

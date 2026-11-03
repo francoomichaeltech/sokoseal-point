@@ -38,7 +38,7 @@ export function PointTips() {
         type="button"
         aria-label={t.open}
         onClick={() => setOpen(true)}
-        className="absolute top-2 right-2 z-10 grid size-9 place-items-center rounded-full bg-ink/60 text-white"
+        className="tap-target absolute top-2 right-2 z-10 grid size-11 place-items-center rounded-full bg-ink/60 text-white"
       >
         <CircleHelp aria-hidden size={20} />
       </button>

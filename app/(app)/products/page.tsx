@@ -18,7 +18,15 @@ export default function ProductsPage() {
   const t = messages.products;
   const [deleting, setDeleting] = useState<Product | null>(null);
 
-  if (!products || !shop) return null;
+  if (!products || !shop) {
+    return (
+      <div className="flex flex-col gap-3 py-2" aria-busy="true">
+        <div className="h-8 w-36 rounded-control bg-line/60" />
+        <div className="h-32 rounded-card border border-line bg-surface" />
+        <div className="h-32 rounded-card border border-line bg-surface" />
+      </div>
+    );
+  }
 
   const activeCount = products.filter((product) => product.active).length;
 
@@ -41,7 +49,7 @@ export default function ProductsPage() {
           type="button"
           // A new URL per press, so a kept-alive form never shows the previous product.
           onClick={() => router.push(`/products/new?s=${Date.now()}`)}
-          className="flex h-10 shrink-0 items-center gap-1.5 rounded-card bg-primary px-4 text-sm font-semibold text-white"
+          className="flex h-11 shrink-0 items-center gap-1.5 rounded-card bg-primary px-4 text-sm font-semibold text-white"
         >
           <Plus aria-hidden size={18} />
           {t.add}
