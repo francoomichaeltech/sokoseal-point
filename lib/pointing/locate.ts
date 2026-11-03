@@ -1,5 +1,6 @@
 import type { Product } from "@/lib/catalogue/types";
 import type { PointedTarget } from "@/lib/commerce/types";
+import { cleanBoxes } from "@/lib/grounding/select";
 import type { Box, Point, ScanResult } from "@/lib/grounding/types";
 import { identifyTargets } from "@/lib/identity/identify-targets";
 import type { TargetIdentity } from "@/lib/identity/types";
@@ -115,7 +116,8 @@ export async function locateTargets(
     const { result, frame } = resolvedScan;
 
     const sorted = [...samples].sort((a, b) => a.at - b.at);
-    const visits = segmentVisits(sorted, result.boxes);
+    const cleaned = cleanBoxes(result.boxes);
+    const visits = segmentVisits(sorted, cleaned);
     // One identity check per object, even if it was pointed at more than once.
     const boxes = [...new Set(visits.flatMap((visit) => (visit.hit.kind === "box" ? [visit.hit.box] : [])))];
     const identities = boxes.length > 0 ? await identifyFn(frame.url, boxes, products) : [];

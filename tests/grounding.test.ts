@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseBoxes } from "../lib/grounding/parse";
-import { selectTarget } from "../lib/grounding/select";
+import { cleanBoxes, selectTarget } from "../lib/grounding/select";
 
 // Output from spike 01 on scene-all.jpg with the concept "object" (mask data elided).
 const SCENE_ALL =
@@ -44,5 +44,20 @@ describe("selectTarget", () => {
 
   it("returns NONE when nothing was detected", () => {
     expect(selectTarget([], { x: 0.5, y: 0.5 })).toEqual({ status: "NONE" });
+  });
+});
+
+describe("cleanBoxes", () => {
+  it("drops frame-covering table/shadow boxes and tiny noise and merges near-duplicates", () => {
+    const tableBox = { x1: 0.01, y1: 0.02, x2: 0.99, y2: 0.98 };
+    const tinyNoise = { x1: 0.5, y1: 0.5, x2: 0.505, y2: 0.505 };
+    const validA = { x1: 0.2, y1: 0.2, x2: 0.4, y2: 0.4 };
+    const duplicateA = { x1: 0.205, y1: 0.205, x2: 0.405, y2: 0.405 };
+    const validB = { x1: 0.6, y1: 0.3, x2: 0.75, y2: 0.5 };
+
+    const cleaned = cleanBoxes([tableBox, tinyNoise, validA, duplicateA, validB]);
+    expect(cleaned).toHaveLength(2);
+    expect(cleaned[0]).toEqual({ x1: 0.2, y1: 0.2, x2: 0.405, y2: 0.405 });
+    expect(cleaned[1]).toEqual(validB);
   });
 });

@@ -10,19 +10,62 @@ const NESTED_AREA_RATIO = 0.5;
 // tracked hand, or sits mostly inside the hand behind the fingertip, is ignored.
 const HAND_COVERAGE = 0.75;
 const BOX_HAND_COVERAGE = 0.55;
+const MIN_BOX_SIDE = 0.015;
+const MIN_BOX_AREA = 0.001;
+const MAX_BOX_AREA = 0.55;
+const DUPLICATE_IOU = 0.8;
 
 const RAY_STEP = 0.01;
 
 export type RayHit = { selection: Selection; at: Point | null };
 
 function area(box: Box) {
-  return (box.x2 - box.x1) * (box.y2 - box.y1);
+  return Math.max(0, box.x2 - box.x1) * Math.max(0, box.y2 - box.y1);
 }
 
 function intersection(a: Box, b: Box) {
   const width = Math.max(0, Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1));
   const height = Math.max(0, Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1));
   return width * height;
+}
+
+function iou(a: Box, b: Box): number {
+  const inter = intersection(a, b);
+  if (inter <= 0) return 0;
+  const union = area(a) + area(b) - inter;
+  return union > 0 ? inter / union : 0;
+}
+
+/**
+ * Drops boxes covering most of the frame (table, shadows) and tiny noise, and merges near-duplicates.
+ */
+export function cleanBoxes(boxes: Box[]): Box[] {
+  const filtered = boxes.filter((box) => {
+    const width = box.x2 - box.x1;
+    const height = box.y2 - box.y1;
+    const boxArea = width * height;
+    if (width < MIN_BOX_SIDE || height < MIN_BOX_SIDE || boxArea < MIN_BOX_AREA) return false;
+    if (boxArea > MAX_BOX_AREA || (width > 0.92 && height > 0.75)) return false;
+    return true;
+  });
+
+  const merged: Box[] = [];
+  for (const box of filtered) {
+    const existingIndex = merged.findIndex((candidate) => iou(candidate, box) >= DUPLICATE_IOU);
+    if (existingIndex >= 0) {
+      const prev = merged[existingIndex];
+      merged[existingIndex] = {
+        x1: Math.min(prev.x1, box.x1),
+        y1: Math.min(prev.y1, box.y1),
+        x2: Math.max(prev.x2, box.x2),
+        y2: Math.max(prev.y2, box.y2),
+      };
+    } else {
+      merged.push(box);
+    }
+  }
+
+  return merged;
 }
 
 function contains(box: Box, point: Point) {

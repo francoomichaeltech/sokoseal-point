@@ -1,3 +1,4 @@
+import { cleanBoxes } from "./select";
 import type { Box } from "./types";
 
 // One record per object, coordinates in w x h pixels:
@@ -13,5 +14,5 @@ export function parseBoxes(output: string): Box[] {
     boxes.push({ x1: x1 / width, y1: y1 / height, x2: x2 / width, y2: y2 / height });
   }
 
-  return boxes;
+  return cleanBoxes(boxes);
 }
