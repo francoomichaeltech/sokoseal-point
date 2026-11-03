@@ -1,4 +1,5 @@
 import type { Product } from "@/lib/catalogue/types";
+import { termsMatch } from "@/lib/intent/normalize";
 import type { IntentAction } from "@/lib/intent/types";
 import type { BasketLine, Outcome, PointedTarget, RejectReason } from "./types";
 
@@ -28,15 +29,22 @@ function fromTarget(target: PointedTarget): Resolution {
   }
 }
 
-// Exact name or alias only; a near miss is not treated as a product.
+// Exact name or alias first; then unambiguous singular/plural or close phonetic match from the catalogue.
 function fromName(name: string, products: Product[]): Resolution {
   const wanted = normalize(name);
-  const matches = products.filter((product) =>
+  if (!wanted) return { reason: "not_in_shop" };
+
+  const exactMatches = products.filter((product) =>
     [product.name, ...product.aliases].some((term) => normalize(term) === wanted),
   );
+  if (exactMatches.length === 1) return { sku: exactMatches[0].sku };
+  if (exactMatches.length > 1) return { reason: "unclear_product" };
 
-  if (matches.length === 1) return { sku: matches[0].sku };
-  return { reason: matches.length === 0 ? "not_in_shop" : "unclear_product" };
+  const closeMatches = products.filter((product) =>
+    [product.name, ...product.aliases].some((term) => termsMatch(wanted, term)),
+  );
+  if (closeMatches.length === 1) return { sku: closeMatches[0].sku };
+  return { reason: closeMatches.length === 0 ? "not_in_shop" : "unclear_product" };
 }
 
 // Applies the spoken actions in order to a copy of the basket. Each action is checked on its own:

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { normalizeTranscript, parseSpokenNumber, termsMatch } from "../lib/intent/normalize";
 import { intentPrompt } from "../lib/intent/prompt";
 import { parseIntent } from "../lib/intent/validate";
 
@@ -83,5 +84,53 @@ describe("intentPrompt", () => {
   it("tells the model how many times the person pointed", () => {
     expect(intentPrompt("naomba kumi", [], 3)).toContain("Pointing count: 3.");
     expect(intentPrompt("naomba kumi")).not.toContain("Pointing count");
+  });
+});
+
+describe("normalizeTranscript", () => {
+  it("normalises phonetic numbers and mixed-language requests", () => {
+    expect(normalizeTranscript("naomba chumvi mbili na wani soap", ["Chumvi", "Soap"])).toBe(
+      "naomba chumvi mbili na one soap",
+    );
+    expect(normalizeTranscript("give me tu of this and thri of that")).toBe(
+      "give me two of this and three of that",
+    );
+  });
+
+  it("preserves Kiswahili tu meaning only at the end of a correction", () => {
+    expect(normalizeTranscript("nipe hii tano, hapana, ziwe tatu tu")).toBe(
+      "nipe hii tano, hapana, ziwe tatu tu",
+    );
+  });
+
+  it("fixes common mishearings and stuttered demonstratives", () => {
+    expect(normalizeTranscript("Hiipe hii moja na hii hii mbili")).toBe("Nipe hii moja na hii mbili");
+    expect(normalizeTranscript("Give me one hapana hapana, zile saba")).toBe("Give me one hapana, ziwe saba");
+    expect(normalizeTranscript("namba chumvi mbili", ["chumvi"])).toBe("naomba chumvi mbili");
+  });
+
+  it("normalises plural and close misheard product names to the shop catalogue term", () => {
+    expect(normalizeTranscript("naomba vikombe viwili na chumvii moja", ["kikombe", "chumvi"])).toBe(
+      "naomba kikombe viwili na chumvi moja",
+    );
+  });
+});
+
+describe("parseSpokenNumber and termsMatch", () => {
+  it("parses number words in both Kiswahili and English", () => {
+    expect(parseSpokenNumber("moja")).toBe(1);
+    expect(parseSpokenNumber("viwili")).toBe(2);
+    expect(parseSpokenNumber("tatu")).toBe(3);
+    expect(parseSpokenNumber("wani")).toBe(1);
+    expect(parseSpokenNumber("tu")).toBe(2);
+    expect(parseSpokenNumber("three")).toBe(3);
+    expect(parseSpokenNumber("saba")).toBe(7);
+  });
+
+  it("matches singular/plural and close mishearings without matching unrelated words", () => {
+    expect(termsMatch("vikombe", "kikombe")).toBe(true);
+    expect(termsMatch("mugs", "mug")).toBe(true);
+    expect(termsMatch("chumvii", "chumvi")).toBe(true);
+    expect(termsMatch("sabuni", "kikombe")).toBe(false);
   });
 });

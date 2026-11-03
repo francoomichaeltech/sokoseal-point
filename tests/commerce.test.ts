@@ -66,6 +66,9 @@ describe("applyActions", () => {
     const named = applyActions([], [act("ADD", 2, "NAMED", "Kikombe")], [], products);
     expect(summary(named.lines)).toEqual(["MUG1 2"]);
 
+    const plural = applyActions([], [act("ADD", 2, "NAMED", "vikombe")], [], products);
+    expect(summary(plural.lines)).toEqual(["MUG1 2"]);
+
     const missing = applyActions([], [act("ADD", 1, "NAMED", "sabuni")], [], products);
     expect(reasons(missing.outcomes)).toEqual(["not_in_shop"]);
   });
