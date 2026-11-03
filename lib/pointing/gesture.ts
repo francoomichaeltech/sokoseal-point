@@ -4,8 +4,9 @@ import type { Box, Point } from "@/lib/grounding/types";
 const INDEX_MCP = 5;
 const INDEX_TIP = 8;
 
-// Index fingers shorter than this on screen are too distant or foreshortened to aim with.
-const MIN_AIM_LENGTH = 0.015;
+// Index fingers shorter than this on screen are too foreshortened to aim with,
+// while allowing a smaller hand held up to about 1 m from the camera.
+const MIN_AIM_LENGTH = 0.01;
 
 /** Raw aim of a visible hand, before smoothing. */
 export type Aim = { tip: Point; base: Point; hand: Box };

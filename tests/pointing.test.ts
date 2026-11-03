@@ -63,6 +63,13 @@ describe("readAim", () => {
     expect(readAim(landmarks)).not.toBeNull();
   });
 
+  it("accepts a smaller hand held up to about 1 m away", () => {
+    const landmarks = pointingHand();
+    landmarks[5] = { x: 0.5, y: 0.7 };
+    landmarks[8] = { x: 0.5, y: 0.688 };
+    expect(readAim(landmarks)).not.toBeNull();
+  });
+
   it("ignores a finger too short to aim with", () => {
     const landmarks = pointingHand();
     landmarks[8] = { x: 0.5, y: 0.695 };
