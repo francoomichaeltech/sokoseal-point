@@ -10,6 +10,50 @@ import type { Keyframe } from "./use-pointing-session";
 
 export type Scan = { result: ScanResult; frame: Frame };
 
+/** Per-scan cache of in-flight or resolved product identities for boxes visited during a hold. */
+export type ScanIdentityCache = {
+  frameUrl: string;
+  entries: Map<string, Promise<TargetIdentity>>;
+};
+
+export function boxCacheKey(box: Box): string {
+  return `${box.x1.toFixed(4)},${box.y1.toFixed(4)},${box.x2.toFixed(4)},${box.y2.toFixed(4)}`;
+}
+
+export function createScanIdentityCache(frameUrl: string): ScanIdentityCache {
+  return { frameUrl, entries: new Map() };
+}
+
+/**
+ * Starts identifying pointed objects during the hold as soon as a visit is detected,
+ * caching each box's identity promise per scan so release reuses it immediately.
+ */
+export function preIdentifyVisits(
+  scan: Scan,
+  samples: TraceSample[],
+  products: Product[],
+  cache: ScanIdentityCache,
+  identifyFn: typeof identifyTargets = identifyTargets,
+): void {
+  if (scan.result.status !== "OK" || cache.frameUrl !== scan.frame.url || products.length === 0) return;
+
+  const sorted = [...samples].sort((a, b) => a.at - b.at);
+  const cleaned = cleanBoxes(scan.result.boxes);
+  const visits = segmentVisits(sorted, cleaned);
+
+  for (const visit of visits) {
+    if (visit.hit.kind !== "box") continue;
+    const box = visit.hit.box;
+    const key = boxCacheKey(box);
+    if (!cache.entries.has(key)) {
+      const pending = identifyFn(scan.frame.url, [box], products)
+        .then((res) => res[0] ?? ({ state: "error" } as TargetIdentity))
+        .catch((): TargetIdentity => ({ state: "error" }));
+      cache.entries.set(key, pending);
+    }
+  }
+}
+
 /** The counter frame the pointings were resolved against, shown to the user for review. */
 export type Evidence = { frameUrl: string; width: number; height: number };
 
@@ -105,6 +149,7 @@ export async function locateTargets(
   products: Product[],
   keyframes: Keyframe[] = [],
   identifyFn: typeof identifyTargets = identifyTargets,
+  identityCache?: ScanIdentityCache | null,
 ): Promise<Located> {
   const handSeen = samples.length > 0;
   const failed: Located = { marks: [], objectCount: 0, handSeen, evidence: null };
@@ -120,7 +165,30 @@ export async function locateTargets(
     const visits = segmentVisits(sorted, cleaned);
     // One identity check per object, even if it was pointed at more than once.
     const boxes = [...new Set(visits.flatMap((visit) => (visit.hit.kind === "box" ? [visit.hit.box] : [])))];
-    const identities = boxes.length > 0 ? await identifyFn(frame.url, boxes, products) : [];
+
+    let identities: TargetIdentity[] = [];
+    if (boxes.length > 0) {
+      const activeCache = identityCache?.frameUrl === frame.url ? identityCache : null;
+      if (activeCache) {
+        const missing = boxes.filter((box) => !activeCache.entries.has(boxCacheKey(box)));
+        if (missing.length > 0) {
+          const batchPromise = identifyFn(frame.url, missing, products);
+          missing.forEach((box, idx) => {
+            activeCache.entries.set(
+              boxCacheKey(box),
+              batchPromise
+                .then((res) => res[idx] ?? ({ state: "error" } as TargetIdentity))
+                .catch((): TargetIdentity => ({ state: "error" })),
+            );
+          });
+        }
+        identities = await Promise.all(
+          boxes.map((box) => activeCache.entries.get(boxCacheKey(box)) ?? Promise.resolve({ state: "error" as const })),
+        );
+      } else {
+        identities = await identifyFn(frame.url, boxes, products);
+      }
+    }
 
     const primaryEvidence: Evidence = { frameUrl: frame.url, width: frame.width, height: frame.height };
     const extraEvidenceMap = new Map<string, Evidence>();

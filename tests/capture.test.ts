@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { Product } from "../lib/catalogue/types";
+import type { Box } from "../lib/grounding/types";
 import { pickBestFrame, scoreFrameQuality } from "../lib/media/capture";
-import { keyframeForVisit, locateTargets, scanWithFallback, type Scan } from "../lib/pointing/locate";
+import {
+  createScanIdentityCache,
+  keyframeForVisit,
+  locateTargets,
+  preIdentifyVisits,
+  scanWithFallback,
+  type Scan,
+} from "../lib/pointing/locate";
 import type { Keyframe } from "../lib/pointing/use-pointing-session";
 
 function syntheticRgba(width: number, height: number, fill: (x: number, y: number) => number): Uint8ClampedArray {
@@ -128,5 +136,59 @@ describe("keyframeForVisit and locateTargets with visit keyframes", () => {
     expect(located.marks[0].target).toEqual({ state: "product", sku: "KIK1" });
     expect(located.evidence?.frameUrl).toBe("data:image/jpeg;base64,initial");
     expect(located.extraEvidence?.map((e) => e.frameUrl)).toEqual(["data:image/jpeg;base64,visit-kf"]);
+  });
+
+  it("pre-identifies visited boxes during the hold and reuses cached identities per scan on release", async () => {
+    const box1 = { x1: 0.1, y1: 0.1, x2: 0.3, y2: 0.3 };
+    const box2 = { x1: 0.6, y1: 0.1, x2: 0.8, y2: 0.3 };
+    const scan: Scan = {
+      result: { status: "OK", boxes: [box1, box2], latencyMs: 10 },
+      frame: { url: "data:image/jpeg;base64,scan1", width: 640, height: 480, score: 10 },
+    };
+
+    const visit1Samples = [
+      { tip: { x: 0.2, y: 0.2 }, direction: { x: 0, y: -1 }, hand: { x1: 0.1, y1: 0.5, x2: 0.3, y2: 0.8 }, at: 100 },
+      { tip: { x: 0.2, y: 0.2 }, direction: { x: 0, y: -1 }, hand: { x1: 0.1, y1: 0.5, x2: 0.3, y2: 0.8 }, at: 250 },
+      { tip: { x: 0.2, y: 0.2 }, direction: { x: 0, y: -1 }, hand: { x1: 0.1, y1: 0.5, x2: 0.3, y2: 0.8 }, at: 450 },
+    ];
+    const visit2Samples = [
+      { tip: { x: 0.7, y: 0.2 }, direction: { x: 0, y: -1 }, hand: { x1: 0.6, y1: 0.5, x2: 0.8, y2: 0.8 }, at: 900 },
+      { tip: { x: 0.7, y: 0.2 }, direction: { x: 0, y: -1 }, hand: { x1: 0.6, y1: 0.5, x2: 0.8, y2: 0.8 }, at: 1050 },
+      { tip: { x: 0.7, y: 0.2 }, direction: { x: 0, y: -1 }, hand: { x1: 0.6, y1: 0.5, x2: 0.8, y2: 0.8 }, at: 1250 },
+    ];
+
+    const calls: number[] = [];
+    const cache = createScanIdentityCache(scan.frame.url);
+    const mockIdentify = async (_url: string, boxes: Box[]) => {
+      calls.push(boxes.length);
+      return boxes.map((b) =>
+        b.x1 < 0.5
+          ? ({ state: "product" as const, sku: "KIK1", name: "Kikombe" })
+          : ({ state: "product" as const, sku: "KAL1", name: "Kalamu" }),
+      );
+    };
+
+    // During hold, after visit 1 is detected:
+    preIdentifyVisits(scan, visit1Samples, [product], cache, mockIdentify);
+    expect(calls).toEqual([1]);
+
+    // Calling preIdentifyVisits again with the same visit does not trigger a duplicate request:
+    preIdentifyVisits(scan, visit1Samples, [product], cache, mockIdentify);
+    expect(calls).toEqual([1]);
+
+    // On release, visit 1 is reused from cache and only visit 2 is fetched:
+    const located = await locateTargets(
+      Promise.resolve(scan),
+      [...visit1Samples, ...visit2Samples],
+      [product],
+      [],
+      mockIdentify,
+      cache,
+    );
+    expect(calls).toEqual([1, 1]);
+    expect(located.marks.map((m) => m.target)).toEqual([
+      { state: "product", sku: "KIK1" },
+      { state: "product", sku: "KAL1" },
+    ]);
   });
 });

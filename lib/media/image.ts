@@ -6,7 +6,7 @@ type Region = { x: number; y: number; width: number; height: number };
 const CROP_PADDING = 0.25;
 
 /** Draws a region of an image into a JPEG data URL whose long edge is at most maxEdge. */
-export function drawToJpeg(source: CanvasImageSource, region: Region, maxEdge: number, quality = 0.85): string | null {
+export function drawToJpeg(source: CanvasImageSource, region: Region, maxEdge: number, quality = 0.8): string | null {
   const scale = Math.min(1, maxEdge / Math.max(region.width, region.height));
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.round(region.width * scale));

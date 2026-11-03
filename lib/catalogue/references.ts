@@ -3,7 +3,7 @@ import { drawToJpeg } from "@/lib/media/image";
 import { loadPhoto } from "./photos";
 import type { Product } from "./types";
 
-const REFERENCE_EDGE = 320;
+const REFERENCE_EDGE = 256;
 const MAX_REFERENCES = 10;
 // Several angles help tell apart products that look alike, such as two drinks in similar bottles.
 const PHOTOS_PER_PRODUCT = 3;

@@ -169,6 +169,12 @@ export function usePointingSession(videoRef: RefObject<HTMLVideoElement | null>,
     return taken;
   }, []);
 
+  const peek = useCallback((): TraceSample[] => {
+    const since = sinceRef.current;
+    if (since === null) return [];
+    return samplesRef.current.filter((item) => item.at >= since);
+  }, []);
+
   const takeKeyframes = useCallback((): Keyframe[] => {
     const taken = [...keyframesRef.current];
     keyframesRef.current = [];
@@ -186,5 +192,5 @@ export function usePointingSession(videoRef: RefObject<HTMLVideoElement | null>,
     [push],
   );
 
-  return { status, handVisible, begin, end, takeKeyframes, addTap, handSeenAtRef };
+  return { status, handVisible, begin, end, peek, takeKeyframes, addTap, handSeenAtRef };
 }

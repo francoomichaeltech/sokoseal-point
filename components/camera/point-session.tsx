@@ -7,7 +7,14 @@ import { requestScan } from "@/lib/grounding/scan-client";
 import { captureFrame, captureSharpestFrame, type Frame } from "@/lib/media/capture";
 import { useCamera } from "@/lib/media/use-camera";
 import type { Recording } from "@/lib/media/use-mic";
-import { locateTargets, scanWithFallback, type Scan } from "@/lib/pointing/locate";
+import {
+  createScanIdentityCache,
+  locateTargets,
+  preIdentifyVisits,
+  scanWithFallback,
+  type Scan,
+  type ScanIdentityCache,
+} from "@/lib/pointing/locate";
 import { createThumbnailer, sceneDifference, type Thumbnail } from "@/lib/pointing/scene";
 import { usePointingSession } from "@/lib/pointing/use-pointing-session";
 import { runHold } from "@/lib/requests/run-hold";
@@ -23,6 +30,7 @@ const HAND_CLEAR_MS = 700;
 const SCENE_CHANGE = 14;
 const SCAN_MAX_AGE_MS = 30_000;
 const RECENT_FRAME_COUNT = 4;
+const PRE_IDENTIFY_INTERVAL_MS = 250;
 
 type CachedScan = { scan: Scan; thumbnail: Thumbnail | null; at: number };
 
@@ -34,6 +42,8 @@ export function PointSession() {
   const cacheRef = useRef<CachedScan | null>(null);
   const recentFramesRef = useRef<Frame[]>([]);
   const scanRef = useRef<Promise<Scan | null> | null>(null);
+  const identityCacheRef = useRef<ScanIdentityCache | null>(null);
+  const preIdentifyTimerRef = useRef<number | null>(null);
   const holdingRef = useRef(false);
 
   const { status: cameraStatus, videoRef } = camera;
@@ -83,8 +93,42 @@ export function PointSession() {
     checkCounter();
     const timer = window.setInterval(checkCounter, CHECK_INTERVAL_MS);
 
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearInterval(timer);
+      if (preIdentifyTimerRef.current !== null) {
+        window.clearInterval(preIdentifyTimerRef.current);
+        preIdentifyTimerRef.current = null;
+      }
+    };
   }, [cameraStatus, trackerStatus, videoRef, handSeenAtRef]);
+
+  function stopPreIdentify() {
+    if (preIdentifyTimerRef.current !== null) {
+      window.clearInterval(preIdentifyTimerRef.current);
+      preIdentifyTimerRef.current = null;
+    }
+  }
+
+  function ensureIdentityCache(frameUrl: string): ScanIdentityCache {
+    if (!identityCacheRef.current || identityCacheRef.current.frameUrl !== frameUrl) {
+      identityCacheRef.current = createScanIdentityCache(frameUrl);
+    }
+    return identityCacheRef.current;
+  }
+
+  function startPreIdentify(scanPromise: Promise<Scan | null>) {
+    stopPreIdentify();
+    void scanPromise.then((resolvedScan) => {
+      if (!resolvedScan || !holdingRef.current) return;
+      const cache = ensureIdentityCache(resolvedScan.frame.url);
+      const checkVisits = () => {
+        if (!holdingRef.current) return;
+        preIdentifyVisits(resolvedScan, pointing.peek(), products ?? [], cache);
+      };
+      checkVisits();
+      preIdentifyTimerRef.current = window.setInterval(checkVisits, PRE_IDENTIFY_INTERVAL_MS);
+    });
+  }
 
   function handleHoldStart() {
     holdingRef.current = true;
@@ -93,6 +137,7 @@ export function PointSession() {
     const cached = cacheRef.current;
     if (cached && performance.now() - cached.at < SCAN_MAX_AGE_MS) {
       scanRef.current = Promise.resolve(cached.scan);
+      startPreIdentify(scanRef.current);
       return;
     }
 
@@ -107,13 +152,16 @@ export function PointSession() {
         cacheRef.current = { scan, thumbnail: null, at: performance.now() };
       },
     );
+    startPreIdentify(scanRef.current);
   }
 
   function handleHoldEnd(recording: Recording | null) {
     holdingRef.current = false;
+    stopPreIdentify();
     const samples = pointing.end();
     const keyframes = pointing.takeKeyframes();
     const scan = scanRef.current;
+    const identityCache = identityCacheRef.current;
     scanRef.current = null;
     if (!recording) return;
 
@@ -123,8 +171,8 @@ export function PointSession() {
       wav: recording.wav,
       voiceHints: voiceKeywords(catalogue),
       productNames: catalogueKeywords(catalogue),
-      // Grounding and identity run while the speech is transcribed.
-      located: locateTargets(scan, samples, catalogue, keyframes),
+      // Grounding and identity run while the speech is transcribed, reusing pre-identified visits.
+      located: locateTargets(scan, samples, catalogue, keyframes, undefined, identityCache),
     });
     router.push("/basket");
   }

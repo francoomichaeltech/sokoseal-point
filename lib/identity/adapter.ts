@@ -16,7 +16,7 @@ export async function identify(targets: string[], products: ReferenceProduct[]):
       identityContent(targets, products),
       "identify_products",
       identitySchema(skus, targets.length),
-      { effort: "low" },
+      { effort: "minimal" },
     );
     const matches = parseIdentity(raw, skus, targets.length);
     if (!matches) {
