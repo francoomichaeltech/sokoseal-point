@@ -75,8 +75,22 @@ export function applyActions(
 
     if (action.reference === "POINT") {
       if (targets.length === 0) resolution = { reason: "nothing_pointed" };
-      else if (!paired) resolution = { reason: "count_mismatch" };
-      else {
+      else if (!paired) {
+        // If every pointed object was outside the shop or empty counter space, report that directly
+        // instead of asking the user to choose a product for a count mismatch.
+        const currentTarget = targets[Math.min(pointIndex, targets.length - 1)];
+        if (targets.every((t) => t.state === "unknown")) {
+          resolution = { reason: "not_in_shop" };
+        } else if (targets.every((t) => t.state === "none")) {
+          resolution = { reason: "nothing_pointed" };
+        } else if (currentTarget?.state === "unknown") {
+          resolution = { reason: "not_in_shop" };
+        } else if (currentTarget?.state === "none") {
+          resolution = { reason: "nothing_pointed" };
+        } else {
+          resolution = { reason: "count_mismatch" };
+        }
+      } else {
         pointNumber = pointIndex + 1;
         resolution = fromTarget(targets[pointIndex]);
       }

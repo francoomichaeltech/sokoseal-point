@@ -13,10 +13,9 @@ import { clearRequest, useRequest } from "@/lib/requests/store";
 import { PointedChips } from "./pointed-chips";
 import { PointedEvidence } from "./pointed-evidence";
 
-// Product problems the user can settle by picking the product; items not in the shop, quantity and basket problems cannot.
+// Product problems the user can settle by picking the product; items not in the shop, empty space, quantity and basket problems cannot.
 const CHOOSABLE: RejectReason[] = [
   "count_mismatch",
-  "nothing_pointed",
   "unclear_product",
   "check_failed",
   "no_previous",

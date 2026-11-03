@@ -206,7 +206,7 @@ export async function locateTargets(
         const emptyCheckBox = boxAroundTip(inspectTip);
         if (products.length > 0) {
           const [spotIdentity] = await identifyFn(inspectFrame.url, [emptyCheckBox], products);
-          if (spotIdentity?.state === "product") {
+          if (spotIdentity?.state === "product" || spotIdentity?.state === "ambiguous") {
             const spotEvidence: Evidence = {
               frameUrl: inspectFrame.url,
               width: inspectFrame.width,
@@ -217,7 +217,7 @@ export async function locateTargets(
             }
             marks.push({
               target: fromIdentity(spotIdentity),
-              name: spotIdentity.name,
+              name: spotIdentity.state === "product" ? spotIdentity.name : null,
               box: emptyCheckBox,
               duration,
               evidence: spotEvidence,
