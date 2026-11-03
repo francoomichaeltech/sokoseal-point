@@ -23,6 +23,7 @@ export type HoldRequest =
       /** False when the camera never saw a hand during the hold. */
       handSeen: boolean;
       evidence: Evidence | null;
+      extraEvidence?: Evidence[];
     };
 
 // Kept in memory: a request is reviewed right after the hold and is not worth restoring after a reload.

@@ -7,6 +7,35 @@ import { stopTracks } from "./tracks";
 
 export type CameraStatus = "checking" | "idle" | "starting" | "live" | MediaFailure;
 
+// Requests continuous autofocus and auto-exposure on mobile cameras that support MediaTrackCapabilities.
+async function applyContinuousCameraModes(stream: MediaStream) {
+  const track = stream.getVideoTracks()[0];
+  if (!track || typeof track.getCapabilities !== "function" || typeof track.applyConstraints !== "function") {
+    return;
+  }
+
+  try {
+    const capabilities = track.getCapabilities() as Record<string, unknown>;
+    const advanced: Record<string, unknown> = {};
+
+    if (Array.isArray(capabilities.focusMode) && capabilities.focusMode.includes("continuous")) {
+      advanced.focusMode = "continuous";
+    }
+    if (Array.isArray(capabilities.exposureMode) && capabilities.exposureMode.includes("continuous")) {
+      advanced.exposureMode = "continuous";
+    }
+    if (Array.isArray(capabilities.whiteBalanceMode) && capabilities.whiteBalanceMode.includes("continuous")) {
+      advanced.whiteBalanceMode = "continuous";
+    }
+
+    if (Object.keys(advanced).length > 0) {
+      await track.applyConstraints({ advanced: [advanced as MediaTrackConstraintSet] });
+    }
+  } catch {
+    // Unsupported constraints are ignored so camera startup never fails.
+  }
+}
+
 export function useCamera() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -34,8 +63,8 @@ export function useCamera() {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
         },
         audio: false,
       });
@@ -47,6 +76,7 @@ export function useCamera() {
 
       streamRef.current = stream;
       markGranted("camera");
+      void applyContinuousCameraModes(stream);
 
       const video = videoRef.current;
       if (video) {

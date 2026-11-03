@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { HandLandmarker } from "@mediapipe/tasks-vision";
 import type { Point } from "@/lib/grounding/types";
+import { captureFrame, type Frame } from "@/lib/media/capture";
 import type { Ray } from "./dwell";
 import { readAim } from "./gesture";
 import { loadHandLandmarker } from "./hand-tracker";
@@ -21,14 +22,21 @@ const VISIBLE_HOLD_MS = 300;
 const TAP_MS = 400;
 const MIN_CUTOFF = 1.5;
 const BETA = 4;
+const KEYFRAME_STILL_RADIUS = 0.04;
+const KEYFRAME_MIN_MS = 250;
+const KEYFRAME_COOLDOWN_MS = 450;
+const MAX_KEYFRAMES = 12;
 
 export type TrackerStatus = "loading" | "ready" | "error";
+
+export type Keyframe = { at: number; tip: Point; frame: Frame };
 
 // Records where the finger aims on every frame without drawing anything. begin() and end() bracket one hold.
 export function usePointingSession(videoRef: RefObject<HTMLVideoElement | null>, enabled: boolean) {
   const [status, setStatus] = useState<TrackerStatus>("loading");
   const [handVisible, setHandVisible] = useState(false);
   const samplesRef = useRef<TraceSample[]>([]);
+  const keyframesRef = useRef<Keyframe[]>([]);
   const sinceRef = useRef<number | null>(null);
   // Last time a hand was in view, so the counter is only scanned when it is clear.
   const handSeenAtRef = useRef(-Infinity);
@@ -47,6 +55,7 @@ export function usePointingSession(videoRef: RefObject<HTMLVideoElement | null>,
     let cancelled = false;
     let frameId = 0;
     let lastRun = 0;
+    let anchor: { tip: Point; since: number; capturedAt: number } | null = null;
     const tipFilter = new PointFilter(MIN_CUTOFF, BETA);
     const baseFilter = new PointFilter(MIN_CUTOFF, BETA);
 
@@ -91,6 +100,33 @@ export function usePointingSession(videoRef: RefObject<HTMLVideoElement | null>,
         if (ray) {
           handSeenAtRef.current = now;
           push({ ...ray, at: now });
+
+          if (sinceRef.current !== null) {
+            const dist = anchor ? Math.hypot(ray.tip.x - anchor.tip.x, ray.tip.y - anchor.tip.y) : Infinity;
+            if (!anchor || dist > KEYFRAME_STILL_RADIUS) {
+              anchor = { tip: ray.tip, since: now, capturedAt: -Infinity };
+            } else if (now - anchor.since >= KEYFRAME_MIN_MS && now - anchor.capturedAt >= KEYFRAME_COOLDOWN_MS) {
+              const frame = captureFrame(video);
+              if (frame) {
+                anchor.capturedAt = now;
+                const existing = keyframesRef.current;
+                const lastKf = existing.at(-1);
+                if (
+                  lastKf &&
+                  Math.hypot(lastKf.tip.x - ray.tip.x, lastKf.tip.y - ray.tip.y) <= KEYFRAME_STILL_RADIUS &&
+                  now - lastKf.at <= KEYFRAME_COOLDOWN_MS * 2
+                ) {
+                  if ((frame.score ?? 0) >= (lastKf.frame.score ?? 0)) {
+                    existing[existing.length - 1] = { at: now, tip: ray.tip, frame };
+                  }
+                } else if (existing.length < MAX_KEYFRAMES) {
+                  existing.push({ at: now, tip: ray.tip, frame });
+                }
+              }
+            }
+          }
+        } else {
+          anchor = null;
         }
         const visible = now - handSeenAtRef.current < VISIBLE_HOLD_MS;
         setHandVisible((current) => (current === visible ? current : visible));
@@ -119,6 +155,7 @@ export function usePointingSession(videoRef: RefObject<HTMLVideoElement | null>,
 
   const begin = useCallback(() => {
     sinceRef.current = performance.now() - PRE_ROLL_MS;
+    keyframesRef.current = [];
   }, []);
 
   const end = useCallback((): TraceSample[] => {
@@ -128,6 +165,12 @@ export function usePointingSession(videoRef: RefObject<HTMLVideoElement | null>,
 
     const taken = samplesRef.current.filter((item) => item.at >= since);
     samplesRef.current = [];
+    return taken;
+  }, []);
+
+  const takeKeyframes = useCallback((): Keyframe[] => {
+    const taken = [...keyframesRef.current];
+    keyframesRef.current = [];
     return taken;
   }, []);
 
@@ -142,5 +185,5 @@ export function usePointingSession(videoRef: RefObject<HTMLVideoElement | null>,
     [push],
   );
 
-  return { status, handVisible, begin, end, addTap, handSeenAtRef };
+  return { status, handVisible, begin, end, takeKeyframes, addTap, handSeenAtRef };
 }

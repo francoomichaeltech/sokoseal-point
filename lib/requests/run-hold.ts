@@ -43,5 +43,6 @@ export async function runHold({ eventId, wav, voiceHints, productNames, located 
     objectCount: place.objectCount,
     handSeen: place.handSeen,
     evidence: place.evidence,
+    ...(place.extraEvidence ? { extraEvidence: place.extraEvidence } : {}),
   });
 }

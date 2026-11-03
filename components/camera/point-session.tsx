@@ -4,10 +4,10 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useProducts } from "@/lib/catalogue/store";
 import { requestScan } from "@/lib/grounding/scan-client";
-import { captureFrame } from "@/lib/media/capture";
+import { captureFrame, captureSharpestFrame, type Frame } from "@/lib/media/capture";
 import { useCamera } from "@/lib/media/use-camera";
 import type { Recording } from "@/lib/media/use-mic";
-import { locateTargets, type Scan } from "@/lib/pointing/locate";
+import { locateTargets, scanWithFallback, type Scan } from "@/lib/pointing/locate";
 import { createThumbnailer, sceneDifference, type Thumbnail } from "@/lib/pointing/scene";
 import { usePointingSession } from "@/lib/pointing/use-pointing-session";
 import { runHold } from "@/lib/requests/run-hold";
@@ -22,8 +22,9 @@ const CHECK_INTERVAL_MS = 700;
 const HAND_CLEAR_MS = 700;
 const SCENE_CHANGE = 14;
 const SCAN_MAX_AGE_MS = 30_000;
+const RECENT_FRAME_COUNT = 4;
 
-type CachedScan = { scan: Scan; thumbnail: Thumbnail; at: number };
+type CachedScan = { scan: Scan; thumbnail: Thumbnail | null; at: number };
 
 export function PointSession() {
   const router = useRouter();
@@ -31,7 +32,8 @@ export function PointSession() {
   const products = useProducts();
   const pointing = usePointingSession(camera.videoRef, camera.status === "live");
   const cacheRef = useRef<CachedScan | null>(null);
-  const scanRef = useRef<Promise<Scan> | null>(null);
+  const recentFramesRef = useRef<Frame[]>([]);
+  const scanRef = useRef<Promise<Scan | null> | null>(null);
   const holdingRef = useRef(false);
 
   const { status: cameraStatus, videoRef } = camera;
@@ -44,20 +46,30 @@ export function PointSession() {
     const thumbnail = createThumbnailer();
     let busy = false;
 
-    const timer = window.setInterval(() => {
+    const checkCounter = () => {
       const video = videoRef.current;
       const now = performance.now();
-      if (busy || holdingRef.current || !video || now - handSeenAtRef.current < HAND_CLEAR_MS) return;
+      if (holdingRef.current || !video || now - handSeenAtRef.current < HAND_CLEAR_MS) return;
 
+      const latestFrame = captureFrame(video);
+      if (latestFrame) {
+        const buffer = [...recentFramesRef.current, latestFrame];
+        recentFramesRef.current = buffer.slice(-RECENT_FRAME_COUNT);
+      }
+
+      if (busy) return;
       const snapshot = thumbnail(video);
       if (!snapshot) return;
 
       const cached = cacheRef.current;
       const unchanged =
-        cached && now - cached.at < SCAN_MAX_AGE_MS && sceneDifference(cached.thumbnail, snapshot) < SCENE_CHANGE;
+        cached &&
+        cached.thumbnail &&
+        now - cached.at < SCAN_MAX_AGE_MS &&
+        sceneDifference(cached.thumbnail, snapshot) < SCENE_CHANGE;
       if (unchanged) return;
 
-      const frame = captureFrame(video);
+      const frame = captureSharpestFrame(null, recentFramesRef.current) ?? latestFrame;
       if (!frame) return;
 
       busy = true;
@@ -66,7 +78,10 @@ export function PointSession() {
         if (result.status !== "OK") return;
         cacheRef.current = { scan: { result, frame }, thumbnail: snapshot, at: performance.now() };
       });
-    }, CHECK_INTERVAL_MS);
+    };
+
+    checkCounter();
+    const timer = window.setInterval(checkCounter, CHECK_INTERVAL_MS);
 
     return () => window.clearInterval(timer);
   }, [cameraStatus, trackerStatus, videoRef, handSeenAtRef]);
@@ -81,15 +96,23 @@ export function PointSession() {
       return;
     }
 
-    // No recent background scan (for example right after the camera started): scan now.
-    const video = videoRef.current;
-    const frame = video ? captureFrame(video) : null;
-    scanRef.current = frame ? requestScan(frame.url).then((result) => ({ result, frame })) : null;
+    // No recent background scan: capture the sharpest frame, scan immediately, retry once,
+    // and fall back to the newest successful scan if available.
+    const fallbackScan = cached?.scan ?? null;
+    scanRef.current = scanWithFallback(
+      () => captureSharpestFrame(videoRef.current, recentFramesRef.current),
+      requestScan,
+      fallbackScan,
+      (scan) => {
+        cacheRef.current = { scan, thumbnail: null, at: performance.now() };
+      },
+    );
   }
 
   function handleHoldEnd(recording: Recording | null) {
     holdingRef.current = false;
     const samples = pointing.end();
+    const keyframes = pointing.takeKeyframes();
     const scan = scanRef.current;
     scanRef.current = null;
     if (!recording) return;
@@ -101,7 +124,7 @@ export function PointSession() {
       voiceHints: voiceKeywords(catalogue),
       productNames: catalogueKeywords(catalogue),
       // Grounding and identity run while the speech is transcribed.
-      located: locateTargets(scan, samples, catalogue),
+      located: locateTargets(scan, samples, catalogue, keyframes),
     });
     router.push("/basket");
   }

@@ -128,7 +128,19 @@ export function RequestCard() {
       )}
 
       {request.evidence && request.marks.some((mark) => mark.box) ? (
-        <PointedEvidence evidence={request.evidence} marks={request.marks} />
+        <>
+          <PointedEvidence
+            evidence={request.evidence}
+            marks={request.marks.filter((m) => !m.evidence || m.evidence.frameUrl === request.evidence?.frameUrl)}
+          />
+          {request.extraEvidence?.map((extra) => (
+            <PointedEvidence
+              key={extra.frameUrl}
+              evidence={extra}
+              marks={request.marks.filter((m) => m.evidence?.frameUrl === extra.frameUrl)}
+            />
+          ))}
+        </>
       ) : (
         request.marks.length > 0 && <PointedChips marks={request.marks} />
       )}
