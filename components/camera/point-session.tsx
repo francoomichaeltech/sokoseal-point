@@ -27,8 +27,8 @@ import { PointTips } from "./point-tips";
 // while no hand is in view and a hold uses that scan straight away.
 const CHECK_INTERVAL_MS = 700;
 const HAND_CLEAR_MS = 700;
-const SCENE_CHANGE = 14;
-const SCAN_MAX_AGE_MS = 30_000;
+const SCENE_CHANGE = 8;
+const SCAN_MAX_AGE_MS = 8_000;
 const RECENT_FRAME_COUNT = 4;
 const PRE_IDENTIFY_INTERVAL_MS = 250;
 
@@ -40,6 +40,7 @@ export function PointSession() {
   const products = useProducts();
   const pointing = usePointingSession(camera.videoRef, camera.status === "live");
   const cacheRef = useRef<CachedScan | null>(null);
+  const thumbnailerRef = useRef<((video: HTMLVideoElement) => Thumbnail | null) | null>(null);
   const recentFramesRef = useRef<Frame[]>([]);
   const scanRef = useRef<Promise<Scan | null> | null>(null);
   const identityCacheRef = useRef<ScanIdentityCache | null>(null);
@@ -54,6 +55,7 @@ export function PointSession() {
     if (cameraStatus !== "live" || trackerStatus === "loading") return;
 
     const thumbnail = createThumbnailer();
+    thumbnailerRef.current = thumbnail;
     let busy = false;
 
     const checkCounter = () => {
@@ -135,13 +137,20 @@ export function PointSession() {
     pointing.begin();
 
     const cached = cacheRef.current;
-    if (cached && performance.now() - cached.at < SCAN_MAX_AGE_MS) {
+    const video = videoRef.current;
+    const currentSnapshot = video && thumbnailerRef.current ? thumbnailerRef.current(video) : null;
+    const sceneUnchanged =
+      cached &&
+      performance.now() - cached.at < SCAN_MAX_AGE_MS &&
+      (!cached.thumbnail || !currentSnapshot || sceneDifference(cached.thumbnail, currentSnapshot) < SCENE_CHANGE);
+
+    if (sceneUnchanged) {
       scanRef.current = Promise.resolve(cached.scan);
       startPreIdentify(scanRef.current);
       return;
     }
 
-    // No recent background scan: capture the sharpest frame, scan immediately, retry once,
+    // No recent unchanged background scan: capture the sharpest frame, scan immediately, retry once,
     // and fall back to the newest successful scan if available.
     const fallbackScan = cached?.scan ?? null;
     scanRef.current = scanWithFallback(
@@ -149,7 +158,7 @@ export function PointSession() {
       requestScan,
       fallbackScan,
       (scan) => {
-        cacheRef.current = { scan, thumbnail: null, at: performance.now() };
+        cacheRef.current = { scan, thumbnail: currentSnapshot, at: performance.now() };
       },
     );
     startPreIdentify(scanRef.current);

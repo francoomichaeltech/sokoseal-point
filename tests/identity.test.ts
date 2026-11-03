@@ -38,6 +38,22 @@ describe("identityContent", () => {
     expect(text).toContain('Image 2: reference "COKE1" "Coca-Cola" "red label"');
     expect(text).toContain("Image 3: crop T1");
   });
+
+  it("includes the full counter scene image for context when provided", () => {
+    const content = identityContent(
+      ["data:image/jpeg;base64,T"],
+      [{ sku: "MUG1", name: "Mug", images: ["data:image/jpeg;base64,R"] }],
+      "data:image/jpeg;base64,SCENE",
+    );
+    const text = content[0].type === "input_text" ? content[0].text : "";
+
+    expect(content.map((part) => part.type)).toEqual(["input_text", "input_image", "input_image", "input_image"]);
+    expect(text).toContain('Image 1: reference "MUG1" "Mug"');
+    expect(text).toContain("Image 2: full counter scene (context showing all objects on the counter)");
+    expect(text).toContain("Image 3: crop T1");
+    expect(content[2]).toEqual({ type: "input_image", image_url: "data:image/jpeg;base64,SCENE" });
+    expect(content[3]).toEqual({ type: "input_image", image_url: "data:image/jpeg;base64,T" });
+  });
 });
 
 describe("parseIdentity", () => {

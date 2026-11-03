@@ -1,11 +1,12 @@
 import { referenceProducts } from "@/lib/catalogue/references";
 import type { Product } from "@/lib/catalogue/types";
 import type { Box } from "@/lib/grounding/types";
-import { cropBox, loadImage } from "@/lib/media/image";
+import { cropBox, drawToJpeg, loadImage } from "@/lib/media/image";
 import { requestIdentity } from "./client";
 import { AMBIGUOUS, UNKNOWN, type TargetIdentity } from "./types";
 
-const CROP_EDGE = 384;
+const CROP_EDGE = 512;
+const SCENE_EDGE = 640;
 
 // Crops each pointed object from the scanned frame and asks which catalogue product it is.
 export async function identifyTargets(frameUrl: string, boxes: Box[], products: Product[]): Promise<TargetIdentity[]> {
@@ -16,7 +17,8 @@ export async function identifyTargets(frameUrl: string, boxes: Box[], products: 
     const crops = boxes.map((box) => cropBox(image, box, CROP_EDGE));
     if (!crops.every((crop): crop is string => crop !== null)) return failed;
 
-    const result = await requestIdentity(crops, references);
+    const scene = drawToJpeg(image, { x: 0, y: 0, width: image.naturalWidth, height: image.naturalHeight }, SCENE_EDGE);
+    const result = await requestIdentity(crops, references, scene);
     if (result.status !== "OK" || result.matches.length !== boxes.length) return failed;
 
     const names = new Map(references.map((reference) => [reference.sku, reference.name]));

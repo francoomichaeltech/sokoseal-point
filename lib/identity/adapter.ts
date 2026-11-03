@@ -3,7 +3,11 @@ import { identityContent, identitySchema } from "./prompt";
 import { UNKNOWN, type IdentityResult, type ReferenceProduct } from "./types";
 import { parseIdentity } from "./validate";
 
-export async function identify(targets: string[], products: ReferenceProduct[]): Promise<IdentityResult> {
+export async function identify(
+  targets: string[],
+  products: ReferenceProduct[],
+  scene?: string | null,
+): Promise<IdentityResult> {
   const started = Date.now();
   if (targets.length === 0) return { status: "OK", matches: [], latencyMs: 0 };
   // With nothing to compare against, no object can be a shop product.
@@ -13,10 +17,10 @@ export async function identify(targets: string[], products: ReferenceProduct[]):
 
   try {
     const raw = await completeJson(
-      identityContent(targets, products),
+      identityContent(targets, products, scene),
       "identify_products",
       identitySchema(skus, targets.length),
-      { effort: "minimal" },
+      { effort: "low" },
     );
     const matches = parseIdentity(raw, skus, targets.length);
     if (!matches) {

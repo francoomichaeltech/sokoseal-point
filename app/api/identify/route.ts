@@ -78,9 +78,10 @@ export async function POST(request: Request) {
 
   const targets = parseTargets(fields.targets);
   const products = parseProducts(fields.products);
-  if (!targets || !products) {
+  const scene = fields.scene === undefined || fields.scene === null ? undefined : isImage(fields.scene) ? fields.scene : null;
+  if (!targets || !products || scene === null) {
     return Response.json({ error: "invalid request" }, { status: 400 });
   }
 
-  return Response.json(await identify(targets, products));
+  return Response.json(await identify(targets, products, scene));
 }
