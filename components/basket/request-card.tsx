@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { OutcomeList } from "@/components/camera/outcome-list";
 import { useProducts } from "@/lib/catalogue/store";
@@ -39,7 +38,6 @@ function sameWords(a: string, b: string) {
 }
 
 export function RequestCard() {
-  const router = useRouter();
   const request = useRequest();
   const basket = useBasket();
   const products = useProducts();
@@ -55,26 +53,6 @@ export function RequestCard() {
           <LoaderCircle aria-hidden size={16} className="shrink-0 animate-spin" />
           {t.basket.processing}
         </p>
-      </section>
-    );
-  }
-
-  if (request.phase === "error") {
-    return (
-      <section className={CARD}>
-        <p className="text-sm text-danger">{t.basket.error}</p>
-        <button
-          type="button"
-          onClick={() => {
-            router.push("/point");
-            window.setTimeout(() => {
-              clearRequest();
-            }, 120);
-          }}
-          className={`mt-3 w-full border border-line bg-surface ${BUTTON}`}
-        >
-          {t.basket.pointAgain}
-        </button>
       </section>
     );
   }

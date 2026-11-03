@@ -8,7 +8,6 @@ import type { Evidence, PointedMark } from "@/lib/pointing/locate";
 /** The latest hold, waiting for the user to review it in the basket. */
 export type HoldRequest =
   | { eventId: string; phase: "processing" }
-  | { eventId: string; phase: "error" }
   | {
       eventId: string;
       phase: "ready";
