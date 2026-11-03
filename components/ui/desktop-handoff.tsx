@@ -13,7 +13,7 @@ export function DesktopHandoff() {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="shrink-0 border-b border-line bg-surface">
-        <div className="flex h-16 w-full items-center justify-between px-8 lg:px-14">
+        <div className="flex h-20 w-full items-center justify-between px-8 lg:px-14">
           <Wordmark />
           <LanguageSwitch />
         </div>
