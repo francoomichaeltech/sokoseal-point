@@ -43,8 +43,11 @@ const EN_NUMBERS: Readonly<Record<string, number>> = {
   two: 2,
   three: 3,
   thri: 3,
+  thrii: 3,
   firi: 3,
   four: 4,
+  foa: 4,
+  foo: 4,
   five: 5,
   faiv: 5,
   faivu: 5,
@@ -66,7 +69,10 @@ const EN_NUMBERS: Readonly<Record<string, number>> = {
 const PHONETIC_NUMBER_MAP: Readonly<Record<string, string>> = {
   wani: "one",
   thri: "three",
+  thrii: "three",
   firi: "three",
+  foa: "four",
+  foo: "four",
   faiv: "five",
   faivu: "five",
   siksi: "six",
@@ -254,7 +260,7 @@ export function normalizeTranscript(transcript: string, catalogueTerms: string[]
   if (!trimmed) return "";
 
   let text = trimmed
-    .replace(/\b[Hh]iipe\b/g, (m) => (m[0] === "H" ? "Nipe" : "nipe"))
+    .replace(/\b([Hh]iipe|[Nn]ipee|[Nn]ipeni|[Nn]ipie)\b/g, (m) => (m[0] === m[0].toUpperCase() ? "Nipe" : "nipe"))
     .replace(/\b([Nn])a\s+omba\b/g, "$1aomba")
     .replace(/\b([Nn])a\s+taka\b/g, "$1ataka")
     .replace(/\b([Oo])n\s+geza\b/g, "$1ngeza")
@@ -263,9 +269,15 @@ export function normalizeTranscript(transcript: string, catalogueTerms: string[]
     .replace(/\b([Hh]apana[\s,]+)zile\b/gi, "$1ziwe")
     .replace(/\b(hii|hizi|ile|zile|hiki|kile)\s+\1\b/gi, "$1")
     .replace(
-      /\b([Nn])amba(?=\s+(?:hii|hizi|ile|zile|moja|mbili|tatu|nne|tano|sita|saba|nane|tisa|kumi|one|two|three|wani|tu|\d+|[a-z]{3,}))/g,
-      "$1aomba",
-    );
+      /\b([Nn])(?:amba|aomab|omba)(?=\s+(?:hii|hizi|ile|zile|hiki|kile|moja|mbili|viwili|tatu|vitatu|nne|vinne|tano|vitano|sita|saba|nane|tisa|kumi|one|two|three|four|five|six|seven|eight|nine|ten|wani|tu|\d+|[a-z]{3,}))/gi,
+      (m) => (m[0] === "N" ? "Naomba" : "naomba"),
+    )
+    .replace(
+      /\b([Aa])(?:di|ddi)(?=\s+(?:hii|hizi|ile|zile|this|these|that|those|moja|mbili|tatu|nne|tano|sita|saba|nane|tisa|kumi|one|two|three|four|five|six|seven|eight|nine|ten|wani|tu|thri|faiv|siksi|seveni|eiti|naini|teni|\d+)\b)/gi,
+      (m) => (m[0] === "A" ? "Add" : "add"),
+    )
+    .replace(/\b([Gg])iv\s+me\b/gi, "$1ive me")
+    .replace(/\b([Mm])ake\s+it\b/gi, "$1ake that");
 
   // Replace "tu" with "two" only when used as an English count (e.g. "give me tu", "tu of this", "and tu soap"),
   // never when used as Kiswahili "only" at the end of a phrase ("ziwe tatu tu").

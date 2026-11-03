@@ -149,6 +149,9 @@ describe("normalizeTranscript", () => {
     expect(normalizeTranscript("Hiipe hii moja na hii hii mbili")).toBe("Nipe hii moja na hii mbili");
     expect(normalizeTranscript("Give me one hapana hapana, zile saba")).toBe("Give me one hapana, ziwe saba");
     expect(normalizeTranscript("namba chumvi mbili", ["chumvi"])).toBe("naomba chumvi mbili");
+    expect(normalizeTranscript("namba tatu")).toBe("naomba tatu");
+    expect(normalizeTranscript("adi ten")).toBe("add ten");
+    expect(normalizeTranscript("adi teni")).toBe("add ten");
   });
 
   it("normalises plural and close misheard product names to the shop catalogue term", () => {
