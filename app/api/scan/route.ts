@@ -1,18 +1,8 @@
 import { scanObjects } from "@/lib/grounding/adapter";
+import { isSameOrigin } from "@/lib/http/same-origin";
 
 const JPEG_PREFIX = "data:image/jpeg;base64,";
 const MAX_IMAGE_CHARS = 3_000_000;
-
-// Each call spends API credits, so only pages served from this host may call it.
-function isSameOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!origin) return false;
-  try {
-    return new URL(origin).host === request.headers.get("host");
-  } catch {
-    return false;
-  }
-}
 
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) {

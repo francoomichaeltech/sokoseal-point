@@ -12,6 +12,6 @@ describe("generateSku", () => {
   });
 
   it("falls back when the name has no letters or digits", () => {
-    expect(generateSku("★", [])).toBe("ITEM1");
+    expect(generateSku("---", [])).toBe("ITEM1");
   });
 });
