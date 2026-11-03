@@ -1,5 +1,5 @@
 import { completeJson } from "@/lib/meta/spark";
-import { normalizeTranscript } from "./normalize";
+import { fallbackParseIntent, formatTranscript, normalizeTranscript } from "./normalize";
 import { INTENT_SCHEMA, intentPrompt } from "./prompt";
 import type { IntentResult } from "./types";
 import { parseIntent } from "./validate";
@@ -15,16 +15,27 @@ export async function resolveIntent(
     return { status: "OK", intent: { transcript: "", actions: [], needsClarification: false }, latencyMs: 0 };
   }
 
-  try {
-    const raw = await completeJson(intentPrompt(normalized, products, pointCount), "shop_actions", INTENT_SCHEMA);
-    const intent = parseIntent(raw);
-    if (!intent) {
-      console.error("[intent] model output failed validation");
-      return { status: "ERROR", latencyMs: Date.now() - started };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const raw = await completeJson(intentPrompt(normalized, products, pointCount), "shop_actions", INTENT_SCHEMA);
+      const intent = parseIntent(raw);
+      if (intent) {
+        return {
+          status: "OK",
+          intent: {
+            ...intent,
+            transcript: formatTranscript(intent.transcript || normalized),
+          },
+          latencyMs: Date.now() - started,
+        };
+      }
+    } catch (error) {
+      if (attempt === 1) {
+        console.error("[intent]", error instanceof Error ? error.message : error);
+      }
     }
-    return { status: "OK", intent, latencyMs: Date.now() - started };
-  } catch (error) {
-    console.error("[intent]", error instanceof Error ? error.message : error);
-    return { status: "ERROR", latencyMs: Date.now() - started };
   }
+
+  const fallback = fallbackParseIntent(normalized, products, pointCount ?? 0);
+  return { status: "OK", intent: fallback, latencyMs: Date.now() - started };
 }

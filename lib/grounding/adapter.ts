@@ -10,11 +10,15 @@ const CONCEPT = "object";
 export async function scanObjects(image: string): Promise<ScanResult> {
   const started = Date.now();
 
-  try {
-    const boxes = parseBoxes(await segment(image, CONCEPT));
-    return { status: "OK", boxes, latencyMs: Date.now() - started };
-  } catch (error) {
-    console.error("[scan] segmentation failed:", error instanceof Error ? error.message : error);
-    return { status: "ERROR", latencyMs: Date.now() - started };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const boxes = parseBoxes(await segment(image, CONCEPT));
+      return { status: "OK", boxes, latencyMs: Date.now() - started };
+    } catch (error) {
+      if (attempt === 1) {
+        console.error("[scan] segmentation failed:", error instanceof Error ? error.message : error);
+      }
+    }
   }
+  return { status: "ERROR", latencyMs: Date.now() - started };
 }

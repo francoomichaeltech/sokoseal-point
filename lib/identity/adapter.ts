@@ -15,21 +15,27 @@ export async function identify(
 
   const skus = products.map((product) => product.sku);
 
-  try {
-    const raw = await completeJson(
-      identityContent(targets, products, scene),
-      "identify_products",
-      identitySchema(skus, targets.length),
-      { effort: "low" },
-    );
-    const matches = parseIdentity(raw, skus, targets.length);
-    if (!matches) {
-      console.error("[identify] model output failed validation");
-      return { status: "ERROR", latencyMs: Date.now() - started };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const raw = await completeJson(
+        identityContent(targets, products, scene),
+        "identify_products",
+        identitySchema(skus, targets.length),
+        { effort: "minimal" },
+      );
+      const matches = parseIdentity(raw, skus, targets.length);
+      if (!matches) {
+        if (attempt === 0) continue;
+        console.error("[identify] model output failed validation");
+        return { status: "ERROR", latencyMs: Date.now() - started };
+      }
+      return { status: "OK", matches, latencyMs: Date.now() - started };
+    } catch (error) {
+      if (attempt === 1) {
+        console.error("[identify]", error instanceof Error ? error.message : error);
+        return { status: "ERROR", latencyMs: Date.now() - started };
+      }
     }
-    return { status: "OK", matches, latencyMs: Date.now() - started };
-  } catch (error) {
-    console.error("[identify]", error instanceof Error ? error.message : error);
-    return { status: "ERROR", latencyMs: Date.now() - started };
   }
+  return { status: "ERROR", latencyMs: Date.now() - started };
 }

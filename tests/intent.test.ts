@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeTranscript, parseSpokenNumber, termsMatch } from "../lib/intent/normalize";
+import { fallbackParseIntent, formatTranscript, normalizeTranscript, parseSpokenNumber, termsMatch } from "../lib/intent/normalize";
 import { intentPrompt } from "../lib/intent/prompt";
 import { parseIntent } from "../lib/intent/validate";
 
@@ -174,5 +174,19 @@ describe("parseSpokenNumber and termsMatch", () => {
     expect(termsMatch("mugs", "mug")).toBe(true);
     expect(termsMatch("chumvii", "chumvi")).toBe(true);
     expect(termsMatch("sabuni", "kikombe")).toBe(false);
+  });
+
+  it("formats transcripts cleanly and provides a deterministic fallback parser", () => {
+    expect(formatTranscript("  nipe hii mbili , na hii moja  ")).toBe("Nipe hii mbili, na hii moja.");
+    const parsed = fallbackParseIntent(
+      normalizeTranscript("nipe hii mbili, na hii moja", ["kikombe"]),
+      ["kikombe"],
+      2,
+    );
+    expect(parsed.transcript).toBe("Nipe hii mbili, na hii moja.");
+    expect(parsed.actions.map((a) => `${a.action} ${a.quantity} ${a.reference}`)).toEqual([
+      "ADD 2 POINT",
+      "ADD 1 POINT",
+    ]);
   });
 });

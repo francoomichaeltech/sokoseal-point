@@ -1,4 +1,5 @@
 // Deterministic normalisation of shop speech before intent parsing and during named-product lookup.
+import type { ActionKind, Intent, IntentAction } from "./types";
 
 const SW_NUMBERS: Readonly<Record<string, number>> = {
   moja: 1,
@@ -312,4 +313,120 @@ export function normalizeTranscript(transcript: string, catalogueTerms: string[]
   }
 
   return words.join("");
+}
+
+/**
+ * Formats a spoken transcript into clean, natural sentence case with punctuation
+ * so the review card always shows well-structured text.
+ */
+export function formatTranscript(transcript: string): string {
+  const cleaned = transcript
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,.;?!])/g, "$1");
+  if (!cleaned) return "";
+
+  const capitalized = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  return /[.?!]$/.test(capitalized) ? capitalized : `${capitalized}.`;
+}
+
+/**
+ * Deterministic fallback parser used when the intent model is unreachable,
+ * ensuring the user's request still resolves cleanly without showing an error screen.
+ */
+export function fallbackParseIntent(
+  normalizedTranscript: string,
+  catalogueTerms: string[] = [],
+  pointCount = 0,
+): Intent {
+  const formatted = formatTranscript(normalizedTranscript);
+  if (!formatted) {
+    return { transcript: "", actions: [], needsClarification: false };
+  }
+
+  // Split into clauses by conjunctions or sentence boundaries, handling corrections ("hapana, ...").
+  const rawClauses = normalizedTranscript
+    .split(/(?:[.;?!]+|\b(?:kisha|halafu|na(?=\s+(?:hii|hizi|ile|zile|hiki|kile|nipe|naomba|nataka|ongeza|ondoa|toa|give|add|remove|one|two|three|four|five|moja|mbili|tatu|nne|tano|\d+))|and(?=\s+(?:this|these|that|those|give|add|remove|one|two|three|four|five|\d+)))\b)/i)
+    .map((c) => c.trim().replace(/^[,]+|[,]+$/g, "").trim())
+    .filter(Boolean);
+
+  const actions: IntentAction[] = [];
+
+  for (const clause of rawClauses) {
+    const lower = clause.toLowerCase();
+    // Skip pure greetings or price questions.
+    if (/\bbei\s+gani\b|\bhow\s+much\b/.test(lower) && !/\bnipe\b|\bnaomba\b|\bnataka\b|\bgive\b|\badd\b/.test(lower)) {
+      continue;
+    }
+
+    // Handle inline correction ("hapana, ziwe saba" or "hapana tatu").
+    const correctionParts = clause.split(/\b(?:hapana|no)\b[,:\s]*/i).map((p) => p.trim()).filter(Boolean);
+    const effectiveClause = correctionParts.length > 1 ? correctionParts[correctionParts.length - 1] : clause;
+    const tokens = effectiveClause
+      .replace(/[^a-zA-Z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter(Boolean);
+    if (tokens.length === 0) continue;
+
+    let action: ActionKind = "ADD";
+    if (tokens.some((t) => ["ondoa", "toa", "punguza", "remove"].includes(t.toLowerCase()))) {
+      action = "REMOVE";
+    } else if (tokens.some((t) => ["ziwe", "iwe", "weka", "set", "change"].includes(t.toLowerCase()))) {
+      action = correctionParts.length > 1 ? "ADD" : "SET";
+    }
+
+    let quantity: number | null = null;
+    for (const token of tokens) {
+      const n = parseSpokenNumber(token);
+      if (n !== null) quantity = n;
+    }
+    if (quantity === null && tokens.some((t) => ["hii", "hiki", "ile", "kile", "this", "that"].includes(t.toLowerCase()))) {
+      quantity = 1;
+    }
+
+    let namedProduct: string | null = null;
+    for (const token of tokens) {
+      const resolved = resolveCatalogueToken(token, catalogueTerms);
+      if (resolved) {
+        namedProduct = resolved;
+        break;
+      }
+    }
+
+    const hasPointWord = tokens.some((t) =>
+      ["hii", "hiki", "hizi", "ile", "kile", "zile", "hapa", "this", "these", "that", "those", "here"].includes(
+        t.toLowerCase(),
+      ),
+    );
+    const hasSameWord = tokens.some((t) => ["hiyo", "hizo", "hilo", "it"].includes(t.toLowerCase()));
+
+    if (!namedProduct && !hasPointWord && !hasSameWord && quantity === null) continue;
+
+    const reference = namedProduct && !hasPointWord ? "NAMED" : hasSameWord && actions.length > 0 ? "SAME" : "POINT";
+    actions.push({
+      action,
+      quantity,
+      reference,
+      namedProduct: reference === "NAMED" ? namedProduct : null,
+      spoken: clause,
+    });
+  }
+
+  if (actions.length === 0 && pointCount > 0) {
+    for (let i = 0; i < pointCount; i++) {
+      actions.push({
+        action: "ADD",
+        quantity: 1,
+        reference: "POINT",
+        namedProduct: null,
+        spoken: formatted,
+      });
+    }
+  }
+
+  return {
+    transcript: formatted,
+    actions,
+    needsClarification: actions.some((a) => a.quantity === null),
+  };
 }

@@ -5,8 +5,8 @@ import { cropBox, drawToJpeg, loadImage } from "@/lib/media/image";
 import { requestIdentity } from "./client";
 import { AMBIGUOUS, UNKNOWN, type TargetIdentity } from "./types";
 
-const CROP_EDGE = 512;
-const SCENE_EDGE = 640;
+const CROP_EDGE = 448;
+const SCENE_EDGE = 512;
 
 // Crops each pointed object from the scanned frame and asks which catalogue product it is.
 export async function identifyTargets(frameUrl: string, boxes: Box[], products: Product[]): Promise<TargetIdentity[]> {
