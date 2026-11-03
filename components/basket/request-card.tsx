@@ -110,23 +110,15 @@ export function RequestCard() {
         <p className="mt-3 rounded-control bg-attention-soft px-3 py-2 text-sm text-attention">{t.basket.noHand}</p>
       )}
 
-      {request.evidence && request.marks.some((mark) => mark.box) ? (
-        <>
-          <PointedEvidence
-            evidence={request.evidence}
-            marks={request.marks.filter((m) => !m.evidence || m.evidence.frameUrl === request.evidence?.frameUrl)}
-          />
-          {request.extraEvidence?.map((extra) => (
-            <PointedEvidence
-              key={extra.frameUrl}
-              evidence={extra}
-              marks={request.marks.filter((m) => m.evidence?.frameUrl === extra.frameUrl)}
-            />
-          ))}
-        </>
-      ) : (
-        request.marks.length > 0 && <PointedChips marks={request.marks} />
-      )}
+      {(() => {
+        const displayMarks = (request.sceneMarks && request.sceneMarks.length > 0 ? request.sceneMarks : request.marks).filter(
+          (mark) => mark.box !== null,
+        );
+        if (request.evidence && displayMarks.length > 0) {
+          return <PointedEvidence evidence={request.evidence} marks={displayMarks} />;
+        }
+        return request.marks.length > 0 ? <PointedChips marks={request.marks} /> : null;
+      })()}
 
       {request.actions.length === 0 ? (
         <p className="mt-3 text-sm text-muted">{t.point.intent.none}</p>

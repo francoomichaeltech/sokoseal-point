@@ -14,8 +14,8 @@ const MAX_GAP_MS = 250;
 // on the way in or out; the finger does not need to be still.
 const MIN_VISIT_MS = 300;
 // A still finger aiming at empty counter space for this long counts as a "nothing there" visit.
-const MIN_EMPTY_VISIT_MS = 450;
-const STILL_EMPTY_RADIUS = 0.035;
+const MIN_EMPTY_VISIT_MS = 300;
+const STILL_EMPTY_RADIUS = 0.045;
 const NEAR_VISIT_RADIUS = 0.08;
 // A short flicker away from a product does not split one pointing into two.
 const REJOIN_MS = 500;
@@ -26,7 +26,7 @@ function distance(a: Point, b: Point): number {
 
 function isAimingAtCounter(sample: TraceSample): boolean {
   const dirLen = Math.hypot(sample.direction.x, sample.direction.y);
-  return dirLen > 0 && sample.direction.y <= 0.2;
+  return dirLen > 0 && sample.direction.y <= 0.3;
 }
 
 function hitFor(boxes: Box[], sample: TraceSample): Hit | null {

@@ -58,11 +58,11 @@ export async function runHold({ eventId, wav, voiceHints, productNames, located 
       needsClarification: resolvedIntent?.needsClarification ?? false,
       targets: marks.map((mark) => mark.target),
       marks,
+      ...(place.sceneMarks ? { sceneMarks: place.sceneMarks } : {}),
       pointed: marks.length,
       objectCount: place.objectCount,
       handSeen: place.handSeen,
       evidence: place.evidence,
-      ...(place.extraEvidence ? { extraEvidence: place.extraEvidence } : {}),
     });
   } catch {
     updateRequest(eventId, {

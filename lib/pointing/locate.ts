@@ -1,6 +1,6 @@
 import type { Product } from "@/lib/catalogue/types";
 import type { PointedTarget } from "@/lib/commerce/types";
-import { cleanBoxes } from "@/lib/grounding/select";
+import { cleanBoxes, selectSceneBoxes } from "@/lib/grounding/select";
 import type { Box, Point, ScanResult } from "@/lib/grounding/types";
 import { identifyTargets } from "@/lib/identity/identify-targets";
 import type { TargetIdentity } from "@/lib/identity/types";
@@ -68,10 +68,10 @@ export type PointedMark = {
 
 export type Located = {
   marks: PointedMark[];
+  sceneMarks?: PointedMark[];
   objectCount: number;
   handSeen: boolean;
   evidence: Evidence | null;
-  extraEvidence?: Evidence[];
 };
 
 const KEYFRAME_WINDOW_MS = 400;
@@ -163,14 +163,15 @@ export async function locateTargets(
     const sorted = [...samples].sort((a, b) => a.at - b.at);
     const cleaned = cleanBoxes(result.boxes);
     const visits = segmentVisits(sorted, cleaned);
-    // One identity check per object, even if it was pointed at more than once.
-    const boxes = [...new Set(visits.flatMap((visit) => (visit.hit.kind === "box" ? [visit.hit.box] : [])))];
+    // Visited boxes first, followed by distinct foreground objects on the initial counter photo.
+    const visitedBoxes = [...new Set(visits.flatMap((visit) => (visit.hit.kind === "box" ? [visit.hit.box] : [])))];
+    const sceneBoxes = selectSceneBoxes(cleaned, visitedBoxes);
 
-    let identities: TargetIdentity[] = [];
-    if (boxes.length > 0) {
+    let sceneIdentities: TargetIdentity[] = [];
+    if (sceneBoxes.length > 0 && products.length > 0) {
       const activeCache = identityCache?.frameUrl === frame.url ? identityCache : null;
       if (activeCache) {
-        const missing = boxes.filter((box) => !activeCache.entries.has(boxCacheKey(box)));
+        const missing = sceneBoxes.filter((box) => !activeCache.entries.has(boxCacheKey(box)));
         if (missing.length > 0) {
           const batchPromise = identifyFn(frame.url, missing, products);
           missing.forEach((box, idx) => {
@@ -182,16 +183,23 @@ export async function locateTargets(
             );
           });
         }
-        identities = await Promise.all(
-          boxes.map((box) => activeCache.entries.get(boxCacheKey(box)) ?? Promise.resolve({ state: "error" as const })),
+        sceneIdentities = await Promise.all(
+          sceneBoxes.map(
+            (box) => activeCache.entries.get(boxCacheKey(box)) ?? Promise.resolve({ state: "error" as const }),
+          ),
         );
       } else {
-        identities = await identifyFn(frame.url, boxes, products);
+        sceneIdentities = await identifyFn(frame.url, sceneBoxes, products);
       }
     }
 
     const primaryEvidence: Evidence = { frameUrl: frame.url, width: frame.width, height: frame.height };
-    const extraEvidenceMap = new Map<string, Evidence>();
+    const identityByBox = new Map<Box, TargetIdentity>();
+    sceneBoxes.forEach((box, idx) => {
+      if (sceneIdentities[idx]) {
+        identityByBox.set(box, sceneIdentities[idx]);
+      }
+    });
 
     const marks: PointedMark[] = [];
     for (const visit of visits) {
@@ -199,32 +207,6 @@ export async function locateTargets(
       const kf = keyframeForVisit(visit, keyframes);
 
       if (visit.hit.kind === "none") {
-        // If the fingertip paused on a spot where SAM detected no box, check the crop around the fingertip
-        // so the vision model sees whether that spot is empty counter space or contains an object.
-        const inspectFrame = kf ? kf.frame : frame;
-        const inspectTip = kf ? kf.tip : visit.tip;
-        const emptyCheckBox = boxAroundTip(inspectTip);
-        if (products.length > 0) {
-          const [spotIdentity] = await identifyFn(inspectFrame.url, [emptyCheckBox], products);
-          if (spotIdentity?.state === "product" || spotIdentity?.state === "ambiguous") {
-            const spotEvidence: Evidence = {
-              frameUrl: inspectFrame.url,
-              width: inspectFrame.width,
-              height: inspectFrame.height,
-            };
-            if (inspectFrame.url !== frame.url) {
-              extraEvidenceMap.set(inspectFrame.url, spotEvidence);
-            }
-            marks.push({
-              target: fromIdentity(spotIdentity),
-              name: spotIdentity.state === "product" ? spotIdentity.name : null,
-              box: emptyCheckBox,
-              duration,
-              evidence: spotEvidence,
-            });
-            continue;
-          }
-        }
         marks.push({ target: { state: "none" }, name: null, box: null, duration });
         continue;
       }
@@ -234,39 +216,45 @@ export async function locateTargets(
         continue;
       }
 
-      let identity = identities[boxes.indexOf(visit.hit.box)];
-      let markBox: Box = visit.hit.box;
-      let markEvidence: Evidence = primaryEvidence;
+      let identity = identityByBox.get(visit.hit.box);
 
       // If the camera moved during the hold so the initial scan could not identify the product,
-      // check the keyframe captured at that pointing visit.
+      // check the keyframe captured at that pointing visit and update the box label on the initial photo.
       if ((!identity || identity.state !== "product") && kf && kf.frame.url !== frame.url && products.length > 0) {
         const kfBox = boxAroundTip(kf.tip);
         const [kfIdentity] = await identifyFn(kf.frame.url, [kfBox], products);
         if (kfIdentity?.state === "product") {
           identity = kfIdentity;
-          markBox = kfBox;
-          markEvidence = { frameUrl: kf.frame.url, width: kf.frame.width, height: kf.frame.height };
-          extraEvidenceMap.set(kf.frame.url, markEvidence);
+          identityByBox.set(visit.hit.box, kfIdentity);
         }
       }
 
       marks.push({
         target: fromIdentity(identity),
         name: identity?.state === "product" ? identity.name : null,
-        box: markBox,
+        box: visit.hit.box,
         duration,
-        evidence: markEvidence,
+        evidence: primaryEvidence,
       });
     }
 
-    const extraEvidence = [...extraEvidenceMap.values()];
+    const sceneMarks: PointedMark[] = sceneBoxes.map((box) => {
+      const identity = identityByBox.get(box);
+      return {
+        target: fromIdentity(identity),
+        name: identity?.state === "product" ? identity.name : null,
+        box,
+        duration: 0,
+        evidence: primaryEvidence,
+      };
+    });
+
     return {
       marks,
+      sceneMarks,
       objectCount: result.boxes.length,
       handSeen,
       evidence: primaryEvidence,
-      ...(extraEvidence.length > 0 ? { extraEvidence } : {}),
     };
   } catch {
     return failed;

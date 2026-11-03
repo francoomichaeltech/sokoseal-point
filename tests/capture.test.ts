@@ -135,7 +135,8 @@ describe("keyframeForVisit and locateTargets with visit keyframes", () => {
     expect(located.marks).toHaveLength(1);
     expect(located.marks[0].target).toEqual({ state: "product", sku: "KIK1" });
     expect(located.evidence?.frameUrl).toBe("data:image/jpeg;base64,initial");
-    expect(located.extraEvidence?.map((e) => e.frameUrl)).toEqual(["data:image/jpeg;base64,visit-kf"]);
+    expect(located.sceneMarks).toHaveLength(1);
+    expect(located.sceneMarks?.[0].target).toEqual({ state: "product", sku: "KIK1" });
   });
 
   it("pre-identifies visited boxes during the hold and reuses cached identities per scan on release", async () => {
@@ -192,31 +193,36 @@ describe("keyframeForVisit and locateTargets with visit keyframes", () => {
     ]);
   });
 
-  it("crops around the fingertip when SAM found no box on a visit so the model verifies empty space vs product", async () => {
-    const emptyScan: Scan = {
-      result: { status: "OK", boxes: [], latencyMs: 10 },
-      frame: { url: "data:image/jpeg;base64,empty-counter", width: 640, height: 480, score: 10 },
+  it("labels all distinct counter objects in sceneMarks on the single photo while keeping empty space as none in marks", async () => {
+    const productBox = { x1: 0.1, y1: 0.1, x2: 0.3, y2: 0.3 };
+    const nonShopBox = { x1: 0.65, y1: 0.1, x2: 0.85, y2: 0.3 };
+    const counterScan: Scan = {
+      result: { status: "OK", boxes: [productBox, nonShopBox], latencyMs: 10 },
+      frame: { url: "data:image/jpeg;base64,counter", width: 640, height: 480, score: 10 },
     };
-    const samples = [
-      { tip: { x: 0.45, y: 0.65 }, direction: { x: 0, y: -1 }, hand: { x1: 0.4, y1: 0.7, x2: 0.5, y2: 0.9 }, at: 0 },
-      { tip: { x: 0.45, y: 0.65 }, direction: { x: 0, y: -1 }, hand: { x1: 0.4, y1: 0.7, x2: 0.5, y2: 0.9 }, at: 200 },
-      { tip: { x: 0.45, y: 0.65 }, direction: { x: 0, y: -1 }, hand: { x1: 0.4, y1: 0.7, x2: 0.5, y2: 0.9 }, at: 400 },
-      { tip: { x: 0.45, y: 0.65 }, direction: { x: 0, y: -1 }, hand: { x1: 0.4, y1: 0.7, x2: 0.5, y2: 0.9 }, at: 600 },
+    const emptySpaceSamples = [
+      { tip: { x: 0.48, y: 0.65 }, direction: { x: 0, y: -1 }, hand: { x1: 0.4, y1: 0.7, x2: 0.55, y2: 0.9 }, at: 0 },
+      { tip: { x: 0.48, y: 0.65 }, direction: { x: 0, y: -1 }, hand: { x1: 0.4, y1: 0.7, x2: 0.55, y2: 0.9 }, at: 200 },
+      { tip: { x: 0.48, y: 0.65 }, direction: { x: 0, y: -1 }, hand: { x1: 0.4, y1: 0.7, x2: 0.55, y2: 0.9 }, at: 400 },
     ];
 
-    const inspectedBoxes: Box[][] = [];
-    const locatedEmpty = await locateTargets(
-      Promise.resolve(emptyScan),
-      samples,
+    const located = await locateTargets(
+      Promise.resolve(counterScan),
+      emptySpaceSamples,
       [product],
       [],
-      async (_url, boxes) => {
-        inspectedBoxes.push(boxes);
-        return [{ state: "unknown" }];
-      },
+      async (_url, boxes) =>
+        boxes.map((b) =>
+          b.x1 < 0.5
+            ? ({ state: "product" as const, sku: "KIK1", name: "Kikombe" })
+            : ({ state: "unknown" as const }),
+        ),
     );
 
-    expect(inspectedBoxes).toHaveLength(1);
-    expect(locatedEmpty.marks).toEqual([{ target: { state: "none" }, name: null, box: null, duration: 600 }]);
+    expect(located.marks).toEqual([{ target: { state: "none" }, name: null, box: null, duration: 400 }]);
+    expect(located.sceneMarks?.map((m) => ({ target: m.target, name: m.name }))).toEqual([
+      { target: { state: "product", sku: "KIK1" }, name: "Kikombe" },
+      { target: { state: "unknown" }, name: null },
+    ]);
   });
 });

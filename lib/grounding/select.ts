@@ -67,6 +67,61 @@ export function cleanBoxes(boxes: Box[]): Box[] {
   return merged;
 }
 
+const MIN_SCENE_BOX_SIDE = 0.05;
+const MIN_SCENE_BOX_AREA = 0.008;
+const MAX_SCENE_BOX_AREA = 0.35;
+const MAX_SCENE_BOXES = 8;
+
+/**
+ * Selects the distinct counter object boxes to label on the primary scene photo,
+ * keeping all visited boxes first and adding non-overlapping foreground objects.
+ */
+export function selectSceneBoxes(cleaned: Box[], visitedBoxes: Box[]): Box[] {
+  const selected: Box[] = [...visitedBoxes];
+
+  const reasonable = cleaned.filter((box) => {
+    const width = box.x2 - box.x1;
+    const height = box.y2 - box.y1;
+    const boxArea = area(box);
+    return (
+      width >= MIN_SCENE_BOX_SIDE &&
+      height >= MIN_SCENE_BOX_SIDE &&
+      boxArea >= MIN_SCENE_BOX_AREA &&
+      boxArea <= MAX_SCENE_BOX_AREA
+    );
+  });
+
+  const distinct = reasonable.filter((box) => {
+    const boxArea = area(box);
+    // Skip a sub-box (such as a printed label or cap) nested inside a single object box.
+    const isNestedPart = reasonable.some(
+      (other) => other !== box && area(other) > boxArea && intersection(box, other) / boxArea >= 0.65,
+    );
+    if (isNestedPart) return false;
+
+    // Skip a group box that wraps two or more distinct objects.
+    const innerCount = reasonable.filter(
+      (other) => other !== box && area(other) < boxArea && intersection(other, box) / area(other) >= 0.65,
+    ).length;
+    return innerCount < 2;
+  });
+
+  const sorted = [...distinct].sort((a, b) => area(b) - area(a));
+  for (const box of sorted) {
+    if (selected.length >= MAX_SCENE_BOXES) break;
+    if (selected.includes(box)) continue;
+    const overlapsExisting = selected.some((existing) => {
+      const minArea = Math.min(area(box), area(existing));
+      return iou(box, existing) >= 0.3 || (minArea > 0 && intersection(box, existing) / minArea >= 0.6);
+    });
+    if (!overlapsExisting) {
+      selected.push(box);
+    }
+  }
+
+  return selected;
+}
+
 function contains(box: Box, point: Point) {
   return (
     point.x >= box.x1 - EDGE_TOLERANCE &&
