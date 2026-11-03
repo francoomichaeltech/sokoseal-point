@@ -112,6 +112,10 @@ export function RequestCard() {
     clearRequest();
   }
 
+  function discard() {
+    clearRequest();
+  }
+
   return (
     <section className={CARD}>
       <p className="text-xs font-semibold tracking-wide text-muted uppercase">{t.basket.newRequest}</p>
@@ -192,7 +196,7 @@ export function RequestCard() {
       {request.needsClarification && <p className="mt-2 text-sm text-attention">{t.point.intent.unclear}</p>}
 
       <div className="mt-4 flex gap-3">
-        <button type="button" onClick={clearRequest} className={`border border-line bg-surface ${BUTTON}`}>
+        <button type="button" onClick={discard} className={`border border-line bg-surface ${BUTTON}`}>
           {t.basket.discard}
         </button>
         <button

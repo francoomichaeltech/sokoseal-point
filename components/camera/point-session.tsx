@@ -101,6 +101,10 @@ export function PointSession() {
         window.clearInterval(preIdentifyTimerRef.current);
         preIdentifyTimerRef.current = null;
       }
+      cacheRef.current = null;
+      identityCacheRef.current = null;
+      recentFramesRef.current = [];
+      scanRef.current = null;
     };
   }, [cameraStatus, trackerStatus, videoRef, handSeenAtRef]);
 
@@ -172,6 +176,9 @@ export function PointSession() {
     const scan = scanRef.current;
     const identityCache = identityCacheRef.current;
     scanRef.current = null;
+    cacheRef.current = null;
+    identityCacheRef.current = null;
+    recentFramesRef.current = [];
     if (!recording) return;
 
     const catalogue = products ?? [];
