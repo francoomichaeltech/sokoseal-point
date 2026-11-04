@@ -39,6 +39,7 @@
 }
 
 @layer base {
+  html,
   body {
     min-height: 100dvh;
     background-color: var(--color-canvas);
@@ -46,13 +47,31 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
     /* Prevents pull-to-refresh from reloading the page during a camera session. */
     overscroll-behavior-y: none;
+  }
+
+  /* Instant responsive touch targets with zero 300ms tap delay. */
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  label {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* Tailwind v4 resets the button cursor to default. */
   button:not(:disabled) {
     cursor: pointer;
+  }
+
+  /* Fast, responsive tactile micro-feedback on active taps without layout shift. */
+  button:not(:disabled):active,
+  a:active {
+    opacity: 0.88;
   }
 
   :focus-visible {

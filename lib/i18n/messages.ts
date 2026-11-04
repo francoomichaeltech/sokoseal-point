@@ -144,7 +144,7 @@ const en = {
     tips: {
       open: "Tips",
       title: "For the best results",
-      camera: "Hold the phone 0.5–1 m away in good light so all products fit in view.",
+      camera: "Hold the phone 0.5–1 m away with products spaced slightly apart in good light.",
       point: "Let the camera see the counter for a second, then point at each item and hold still for 1 second.",
       speak: "Hold the button and speak clearly, at a normal pace.",
       photos: "Give each product 3 clear photos with the label visible.",
@@ -344,7 +344,7 @@ const sw: Messages = {
     tips: {
       open: "Vidokezo",
       title: "Kwa matokeo bora",
-      camera: "Shika simu umbali wa mita 0.5–1 kwenye mwanga mzuri ili bidhaa zote zionekane.",
+      camera: "Shika simu umbali wa mita 0.5–1 huku bidhaa zikiwa na nafasi kidogo na mwanga mzuri.",
       point: "Acha kamera ione meza kwa sekunde 1, kisha elekeza kila kitu na utulize kidole kwa sekunde 1.",
       speak: "Shikilia kitufe na uongee kwa uwazi, bila haraka.",
       photos: "Kila bidhaa iwe na picha 3 wazi, lebo ikionekana.",

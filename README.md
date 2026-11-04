@@ -135,6 +135,7 @@ npm run dev
    - Add 3 to 4 real physical items you have in front of you (for example: `Chumvi` at `500`, `Sabuni` at `1500`, `Mafuta ya Family Care` at `1300`, `Kikombe` at `500`).
    - Capture **2 to 3 clear reference photos** of each item from slightly different angles against your counter surface, and optionally add spoken aliases (for example, `Salt`, `Soap`, `Cup`) or a short visual distinguishing note.
 3. **Arrange the Counter and Open Point (`/point`)**:
+   - Hold the phone about `0.5–1 m` away so all items fit cleanly in view.
    - Place your catalogue items on a well-lit surface with `4–6 cm` of spacing between items, plus one non-shop object (such as a phone charger or pen) and an area of empty counter space.
    - Let the camera view the counter **without your hand in frame for 1–2 seconds** first. SokoSeal Point automatically captures the sharpest unobstructed counter frame and runs `sam-3.1` in the background.
 4. **Hold to Point and Speak**:
