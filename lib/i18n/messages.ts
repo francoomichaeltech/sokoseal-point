@@ -144,8 +144,8 @@ const en = {
     tips: {
       open: "Tips",
       title: "For the best results",
-      camera: "Keep the products in good light, with all of them in view.",
-      point: "Point at one product at a time and hold your finger still for a moment.",
+      camera: "Hold the phone 0.5–1 m away in good light so all products fit in view.",
+      point: "Let the camera see the counter for a second, then point at each item and hold still for 1 second.",
       speak: "Hold the button and speak clearly, at a normal pace.",
       photos: "Give each product 3 clear photos with the label visible.",
       honest: "SokoSeal only adds products it recognises. If it is not sure, it does not add them.",
@@ -344,8 +344,8 @@ const sw: Messages = {
     tips: {
       open: "Vidokezo",
       title: "Kwa matokeo bora",
-      camera: "Weka bidhaa kwenye mwanga mzuri, na zote zionekane kwenye kamera.",
-      point: "Elekeza bidhaa moja baada ya nyingine, na utulize kidole kwa muda mfupi.",
+      camera: "Shika simu umbali wa mita 0.5–1 kwenye mwanga mzuri ili bidhaa zote zionekane.",
+      point: "Acha kamera ione meza kwa sekunde 1, kisha elekeza kila kitu na utulize kidole kwa sekunde 1.",
       speak: "Shikilia kitufe na uongee kwa uwazi, bila haraka.",
       photos: "Kila bidhaa iwe na picha 3 wazi, lebo ikionekana.",
       honest: "SokoSeal inaongeza tu bidhaa inazozitambua. Isipokuwa na uhakika, haiziongezi.",
