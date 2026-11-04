@@ -1,6 +1,7 @@
 {
   "name": "sokoseal-point",
   "version": "0.1.0",
+  "description": "Multimodal point-and-speak shop counter assistant for Tanzania, powered by Meta SAM 3.1, Muse Voice, Muse Spark, and MediaPipe.",
   "private": true,
   "scripts": {
     "dev": "next dev",

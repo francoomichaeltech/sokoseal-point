@@ -1,10 +1,11 @@
 # SokoSeal Point
 
-SokoSeal Point is a mobile web application built for small retail shops in Tanzania. A shopkeeper or customer points a finger at physical products on the counter while holding the microphone button and speaking naturally in Kiswahili, English, or a mix of both—for example:
+SokoSeal Point is a multimodal **point-and-speak** mobile web application built for small retail shops in Tanzania. A shopkeeper or customer points a finger at physical products on the counter while holding the microphone button and speaking naturally in Kiswahili, English, or a mix of both.
 
-- `"Nipe hii mbili, na hii moja"` ("Give me two of this, and one of this")
-- `"Give me one, hapana, ziwe saba"` ("Give me one—no, make it seven")
-- `"Naomba chumvi mbili na wani soap"` ("Please give me two salt and one soap")
+The application seamlessly supports:
+1. **Physical Pointing & Speaking**: Pointing at real counter objects while saying quantities (`"Nipe hii mbili, na hii moja"`).
+2. **Spoken Item Naming**: Asking for catalogue items directly by name without pointing (`"Naomba chumvi mbili na wani soap"`).
+3. **Mixed Point & Named Speech**: Combining both in a single continuous request (`"Nipe hii moja, hapana, ziwe tatu, na kikombe kimoja"`).
 
 SokoSeal Point resolves which objects on the counter were pointed at and how many units were requested, matches them against the shop's own local catalogue and reference photos, and presents a structured **New request** review card in the basket. Nothing enters the basket until the user explicitly taps **Add to basket**. Once confirmed, the basket can be sealed into a read-only transaction record. Payments are intentionally out of scope.
 
