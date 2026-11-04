@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CircleCheck } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { startNewBasket } from "@/lib/commerce/store";
@@ -23,6 +23,13 @@ export function SealedView({ basket }: { basket: Basket }) {
     dateStyle: "medium",
     timeStyle: "short",
   });
+
+  useEffect(() => {
+    // Reset scroll to top when SealedView mounts so the user views the receipt from the top.
+    const main = document.querySelector("main");
+    if (main) main.scrollTop = 0;
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
     <div className="flex flex-col gap-4 pb-20">

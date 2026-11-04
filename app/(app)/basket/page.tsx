@@ -117,6 +117,9 @@ export default function BasketPage() {
           confirmLabel={t.sealYes}
           cancelLabel={t.cancel}
           onConfirm={() => {
+            const main = document.querySelector("main");
+            if (main) main.scrollTop = 0;
+            window.scrollTo(0, 0);
             sealBasket();
             setSealing(false);
           }}
